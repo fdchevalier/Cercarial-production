@@ -9,8 +9,6 @@ SAMPLES = os.listdir("data/libraries")
 
 rule all:
     input:
-        expand("data/libraries/{sample}/{sample}.sam", sample=SAMPLES),
-        expand("data/libraries/{sample}/{sample}.bam", sample=SAMPLES),
         expand("data/libraries/{sample}/{sample}_sorted.bam", sample=SAMPLES),
         expand("data/libraries/{sample}/{sample}_sorted.bam.bai", sample=SAMPLES),
         expand("data/libraries/{sample}/{sample}_sorted_MD.bam", sample=SAMPLES),
@@ -25,38 +23,20 @@ rule alignment:
     input:
         read1="data/libraries/{sample}/{sample}_R1.fastq.gz",
         read2="data/libraries/{sample}/{sample}_R2.fastq.gz",
-        genome="data/genome/schistosoma_mansoni.PRJEA36577.WBPS14.genomic.fa",
+        genome="data/genome/schistosoma_mansoni.PRJEA36577.WBPS14.genomic.fa"
     output:
-        "data/libraries/{sample}/{sample}.sam"
+        temp("data/libraries/{sample}/{sample}_sorted.bam")
     params:
         rg=r"@RG\tID:{sample}\tPL:illumina\tLB:{sample}\tSM:{sample}"
     shell:
         'sleep $[ ( $RANDOM % 100 )  + 1 ]s ; '
-        'bwa mem -t $(nproc) -M -R "{params.rg}" "{input.genome}" "{input.read1}" "{input.read2}" > "{output}"'
-
-rule bam:
-    input:
-        "data/libraries/{sample}/{sample}.sam"
-    output:
-        "data/libraries/{sample}/{sample}.bam"
-    shell:
-        'sleep 1m $[ ( $RANDOM % 200 )  + 1 ]s ; '
-        'samtools view -b -h -@ $(nproc) "{input}" > "{output}"'
-
-rule sorting:
-    input:
-        "data/libraries/{sample}/{sample}.bam"
-    output:
-        "data/libraries/{sample}/{sample}_sorted.bam"
-    shell:
-        'sleep 15s $[ ( $RANDOM % 100 )  + 1 ]s ; '
-        'samtools sort -@ $(nproc) -f "{input}" "{output}"'
+        'bwa mem -t $(nproc) -M -R "{params.rg}" "{input.genome}" "{input.read1}" "{input.read2}" | samtools sort -@8 -o "{output}" -'
 
 rule indexing1:
     input:
         "data/libraries/{sample}/{sample}_sorted.bam"
     output:
-        "data/libraries/{sample}/{sample}_sorted.bam.bai",
+        temp("data/libraries/{sample}/{sample}_sorted.bam.bai")
     shell:
         'sleep 1m $[ ( $RANDOM % 200 )  + 1 ]s ; '
         'samtools index "{input}"'
@@ -65,8 +45,8 @@ rule mark_duplicates:
     input:
         "data/libraries/{sample}/{sample}_sorted.bam"
     output:
-        bam="data/libraries/{sample}/{sample}_sorted_MD.bam",
-        log="data/libraries/{sample}/{sample}_sorted_MD.log"
+        bam=temp("data/libraries/{sample}/{sample}_sorted_MD.bam"),
+        log=protected("data/libraries/{sample}/{sample}_sorted_MD.log")
     shell:
         'gatk --java-options "-Xmx2g" MarkDuplicates -I "{input}" -O "{output.bam}" -M "{output.log}" --VALIDATION_STRINGENCY LENIENT --MAX_FILE_HANDLES_FOR_READ_ENDS_MAP $(ulimit -n)'
 
@@ -74,7 +54,7 @@ rule indexing2:
     input:
         "data/libraries/{sample}/{sample}_sorted_MD.bam"
     output:
-        "data/libraries/{sample}/{sample}_sorted_MD.bam.bai"
+        temp("data/libraries/{sample}/{sample}_sorted_MD.bam.bai")
     shell:
         'sleep 1m $[ ( $RANDOM % 200 )  + 1 ]s ; '
         'samtools index "{input}"'
@@ -85,8 +65,8 @@ rule bsqr:
         genome="data/genome/schistosoma_mansoni.PRJEA36577.WBPS14.genomic.fa",
         sites="data/genome/sm_dbSNP_v7.vcf"
     output:
-        table="data/libraries/{sample}/{sample}_sorted_MD.grp",
-        bam="data/libraries/{sample}/{sample}_sorted_MD_recal.bam"
+        table=temp("data/libraries/{sample}/{sample}_sorted_MD.grp"),
+        bam=protected("data/libraries/{sample}/{sample}_sorted_MD_recal.bam")
     params:
         table=r"data/libraries/{sample}/{sample}_sorted_MD.grp"
     shell:
@@ -97,7 +77,7 @@ rule indexing3:
     input:
         "data/libraries/{sample}/{sample}_sorted_MD_recal.bam"
     output:
-        "data/libraries/{sample}/{sample}_sorted_MD_recal.bam.bai"
+        protected("data/libraries/{sample}/{sample}_sorted_MD_recal.bam.bai")
     shell:
         'sleep 1m $[ ( $RANDOM % 200 )  + 1 ]s ; '
         'samtools index "{input}"'
@@ -106,7 +86,7 @@ rule stats:
     input:
         "data/libraries/{sample}/{sample}_sorted_MD_recal.bam"
     output:
-        "data/libraries/{sample}/{sample}_sorted_MD_recal.flagstat"
+        protected("data/libraries/{sample}/{sample}_sorted_MD_recal.flagstat")
     params:
         spl=r"data/libraries/{sample}/{sample}_sorted_MD_recal.bam"
     shell:
