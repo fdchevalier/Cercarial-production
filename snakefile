@@ -122,7 +122,7 @@ rule combining:
     run:
         gvcfs=" --variant ".join(input.gvcfs)
         shell('sleep 30s $[ ( $RANDOM % 200 )  + 1 ]s ; '
-        'gatk --java-options "-Xmx2g" CombineGVCFs -R "{input.genome}" {gvcfs} -D "{input.sites}" -O "{output}"')
+        'gatk --java-options "-Xmx2g" CombineGVCFs -R "{input.genome}" --variant {gvcfs} -D "{input.sites}" -O "{output}"')
 
 rule merging:
     input:
