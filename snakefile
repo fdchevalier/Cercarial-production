@@ -1,11 +1,10 @@
 from __future__ import print_function
 import os
 import fnmatch
+import pandas as pd
 
 SAMPLES = os.listdir("data/libraries")
-
-# PROGGENY_SPL = fnmatch.filter(SAMPLES, 'F*')
-# PARENT_SPL = fnmatch.filter(SAMPLES, 'S*')
+CONTIGS = pd.read_table("data/genome/schistosoma_mansoni.PRJEA36577.WBPS14.genomic.fa.fai", header=None, usecols=[0], squeeze=True, dtype=str)
 
 rule all:
     input:
@@ -20,6 +19,7 @@ rule all:
         expand("data/libraries/{sample}/{sample}_sorted_MD_recal.flagstat", sample=SAMPLES),
         expand("data/libraries/{sample}/{sample}.gvcf.gz", sample=SAMPLES),
         "data/calling/cerc_prod.gvcf.gz",
+        expand("data/calling/cerc_prod.{contig}.vcf.gz", contig=CONTIGS),
         "data/calling/cerc_prod.vcf.gz"
 
 rule alignment:
@@ -112,25 +112,25 @@ rule calling:
         'sleep 30s $[ ( $RANDOM % 100 )  + 1 ]s ; '
         'gatk --java-options "-Xmx2g" HaplotypeCaller -R "{input.genome}" -I "{input.bam}" -D "{input.sites}" --output-mode EMIT_ALL_ACTIVE_SITES -ERC GVCF -O "{output}"'
 
-rule combining:
-    input:
-        gvcfs=expand("data/libraries/{sample}/{sample}.gvcf.gz", sample=SAMPLES),
-        genome="data/genome/schistosoma_mansoni.PRJEA36577.WBPS14.genomic.fa",
-        sites="data/genome/sm_dbSNP_v7.vcf"
-    output:
-        temp("data/calling/cerc_prod.gvcf.gz")
-    run:
-        gvcfs=" --variant ".join(input.gvcfs)
-        shell('sleep 30s $[ ( $RANDOM % 200 )  + 1 ]s ; '
-        'gatk --java-options "-Xmx9g" CombineGVCFs -R "{input.genome}" --variant {gvcfs} -D "{input.sites}" -O "{output}"')
 
-rule merging:
+rule genotype_variants:
     input:
         gvcf="data/calling/cerc_prod.gvcf.gz",
         genome="data/genome/schistosoma_mansoni.PRJEA36577.WBPS14.genomic.fa",
         sites="data/genome/sm_dbSNP_v7.vcf"
     output:
-        protected("data/calling/cerc_prod.vcf.gz")
+        "data/calling/cerc_prod.{contig}.vcf.gz"
+    params:
+        contig=r"{contig}"
     shell:
-        'sleep 30s $[ ( $RANDOM % 200 )  + 1 ]s ; '
-        'gatk --java-options "-Xmx2g"  GenotypeGVCFs -R "{input.genome}" -V "{input.gvcf}" -D "{input.sites}" -O "{output}"'
+        'gatk --java-options "-Xmx2g"  GenotypeGVCFs -R "{input.genome}" -V "{input.gvcf}" -D "{input.sites}" -L {params.contig} -O "{output}"'
+    
+
+rule merge_variants:
+    input:
+        vcfs=expand("data/calling/cerc_prod.{contig}.vcf.gz", contig=CONTIGS)
+    output:
+        "data/calling/cerc_prod.vcf.gz"
+    run:
+        vcfs=" -I ".join('"{0}"'.format(w) for w in input.vcfs)
+        shell('gatk --java-options "-Xmx2g"  MergeVcfs -I {vcfs} -O "{output}"')
