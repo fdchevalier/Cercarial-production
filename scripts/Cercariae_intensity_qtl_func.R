@@ -64,7 +64,12 @@ mydata.fltr <- function(data.x, data.slct, pattern.data, sign, trsh, missing.dat
     data.x[,data.cln] <- data.x.tmp
     
     # Remove rows with missing data over the threshold
-    data.rw.md <- (rowSums(data.x[,data.cln] == na.string)/length(data.cln)) <= missing.data
+    if (is.na(na.string)) {
+        na.mt <- is.na(data.x[,data.cln])
+    } else {
+        na.mt <- data.x[,data.cln] == na.string
+    }
+    data.rw.md <- (rowSums(na.mt)/length(data.cln)) <= missing.data
     #data.x <- data.x[data.rw.md,]  # Keep only rows that pass the missing data test
     data.x[! data.rw.md,data.cln] <- na.string
     return(data.x)

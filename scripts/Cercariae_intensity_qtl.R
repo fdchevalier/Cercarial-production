@@ -30,9 +30,10 @@
 # Packages required #
 #===================#
 
-library("qtl")    # For R/qtl commands
+library("qtl")      # For R/qtl commands
 library("vcfR")
 library("magrittr")
+library("snow")     # For parallel permutations
 
 
 
@@ -49,11 +50,13 @@ library("magrittr")
 # External functions #
 #--------------------#
 
-# Function specific to R/qtl
-source("~/scripts/0-R_functions_repository/gt2rqtl.R")
+source("Cercariae_intensity_qtl_func.R")
 
-# Function to plot data on exome - v2.4
-source("~/scripts/0-R_functions_repository/Sm.matplot.data.R_v3.0")
+# Function specific to R/qtl
+source("gt2rqtl.R")
+
+# Function to plot data on exome
+source("Sm.matplot.data.R")
 
 
 
@@ -62,9 +65,9 @@ source("~/scripts/0-R_functions_repository/Sm.matplot.data.R_v3.0")
 #===========#
 
 # Folders
-data_fd    <- "../data/"
-graph_fd   <- "../graphs/"
-result_fd  <- "../results/"
+data_fd   <- "../data/"
+graph_fd  <- "../graphs/"
+result_fd <- "../results/1-QTL/"
 
 myvcf_f <- paste0(data_fd, "calling/cerc_prod_snpEff_reduced.vcf.gz")
 
@@ -76,10 +79,10 @@ myfmt <- matrix(c(
 
 
 # Object contaning the input file name
-filename <- basename(myvcf_F) %>% strsplit(., ".vcf.gz")
+filename <- basename(myvcf_f) %>% strsplit(., ".vcf.gz")
 
 # PT data file
-myF2.ptf <- "data/F2.csv"
+myF2.ptf <- paste0(data_fd, "phenotyping/F2.csv")
 
 # Output name of the R/qtl GT table without any filename extension
 myF2.gt <- "F2_geno"
@@ -103,10 +106,12 @@ myF2.list <- c("F2A", "F2B")
 
 # GQ and read depth (rd) and missing data thresholds
 ## Assign NULL to skip to the variable to skip the corresponding filtering step
-gq.trsh <- NULL
+gq.trsh <- 30
 rd.trsh <- 10
 # mymis.data must be in [0;1[
 mymissing.data <- 0.2
+
+na.string <- NA # Could be "./."
 
 # Allele code
 ## Be careful to the position of the parents in the vector mypX as the first allele will be given to the first parent. In other words, the first parent needs to correspond to the first allele of my.alleles vector.
@@ -116,6 +121,8 @@ my.alleles <- c("L", "H")
 #--------------#
 # QTL analysis #
 #--------------#
+
+n.cluster <- 3  # ATTENTION: increasing this number carefully (make sure you have sufficient RAM) otherwise server might be unusable
 
 # Number of permutationq to get threshold
 my.n.perm <- 1000   # ATTENTION: increasing number will increase computation time substantially
@@ -150,14 +157,21 @@ mymodel <- myprefixes[ myprefixes[,1] == pheno.cln, 3]
 #---------------#
 
 if (mymissing.data < 0 | mymissing.data >= 1) { stop("mymissing.data must be in [0;1[") }
-if(! any(grepl(pheno.cln, myprefixes[,1]))) {stop("The pheno.cln value is unknown in myprefixes table.", call.=FALSE)}
+if (! any(grepl(pheno.cln, myprefixes[,1]))) {stop("The pheno.cln value is unknown in myprefixes table.", call.=FALSE)}
 
+if (! dir.exists(result_fd)) { dir.create(result_fd, recursive = TRUE)
 
 #--------------#
 # Data Loading #
 #--------------#
 
 myvcf <- read.vcfR(myvcf_f)
+
+# Remove mitochondrial markers
+myvcf <- myvcf[! grepl("mito", getFIX(myvcf)[,1], ignore.case = TRUE), ]
+
+# Remove indels
+myvcf <- extract.indels(myvcf)
 
 # Keep only biallelic sites
 myvcf <- myvcf[is.biallelic(myvcf), ]
@@ -168,15 +182,15 @@ names(mydata) <- myfmt[,1]
 
 for (i in myfmt[,1]) {
     mynum <- myfmt[ myfmt[,1] %in% i, 2]
-    mydata[[i]] <- extract.gt(myvcf, i, as.numeric = mynum)
+    mydata[[i]] <- data.frame(getFIX(myvcf)[, 1:2], extract.gt(myvcf, i, as.numeric = mynum), stringsAsFactors = FALSE)
 }
 
 # Clean any phasing
-mydata$GT <- gsub("|", "/", mydata$GT, fixed = TRUE)
+mydata$GT[, -(1:2)] <- apply(mydata$GT[, -(1:2)], 2, function(x) gsub("|", "/", x, fixed = TRUE))
 
 # Reverse phased data to default
-if (any(grepl("1/0", mydata$GT, fixed = TRUE))) {
-    mydata$GT <- gsub("1/0", "0/1", mydata$GT, fixed = TRUE)
+if (any(grepl("1/0", as.matrix(mydata$GT[, -(1:2)]), fixed = TRUE))) {
+    mydata$GT[, -(1:2)] <- apply(mydata$GT[, -(1:2)], 2, function(x) gsub("1/0", "0/1", x, fixed = TRUE))
 }
 
 # Remove uninformative markers (same as reference or between all parents)
@@ -193,37 +207,49 @@ mydata <- lapply(mydata, function(x) x[! myvec, ])
 cat("\nFiltering data based on GQ and DP...\n")
 
 # Converting data in numeric
-cat(paste("\t- Initial number of alleles before filtering in F2A and F2B:", nrow(mydata.gt), "\n"))
+cat("\t- Initial number of alleles before filtering in F2A and F2B:", nrow(mydata$GT), "\n")
 
 for (i in myF2.list) {
 
     # Data filtering removing SNPs with low GQ
     if (! is.null(gq.trsh)) {        # gq.trsh is in the section variables
         gq.sign <- ">="
-        mydata.gt.tmp.flt.gq <- mydata.fltr(mydata.gt, mydata.gq, i, missing.data=mymissing.data, sign=gq.sign, trsh=gq.trsh)
+        mydata.gt.tmp.flt.gq <- mydata.fltr(mydata$GT, mydata$GQ, i, missing.data = mymissing.data, sign = gq.sign, trsh = gq.trsh)
 
-        nb.alleles <- nrow(mydata.gt.tmp.flt.gq.dp[(rowSums(mydata.gt.tmp.flt.gq.dp[,grep(i,colnames(mydata.gt.tmp.flt.gq.dp))] == "./.")/length(grep(i,colnames(mydata.gt.tmp.flt.gq.dp))) <= mymissing.data),])
-        cat(paste("\t- Remaining alleles after GQ filtering in ", i, ":", nb.alleles, "\n", sep=""))
+        if (is.na(na.string)) {
+            na.mt <- is.na(mydata.gt.tmp.flt.gq[,grep(i,colnames(mydata.gt.tmp.flt.gq))])
+        } else {
+            na.mt <- mydata.gt.tmp.flt.gq[,grep(i,colnames(mydata.gt.tmp.flt.gq))] == na.string
+        }
+
+        nb.alleles <- nrow(mydata.gt.tmp.flt.gq[(rowSums(na.mt)/length(grep(i,colnames(mydata.gt.tmp.flt.gq))) <= mymissing.data),])
+        cat("\t- Remaining alleles after GQ filtering in ", i, ": ", nb.alleles, "\n", sep = "")
     } else {
-        mydata.gt.tmp.flt.gq <- mydata.gt
+        mydata.gt.tmp.flt.gq <- mydata$GT
     }
 
     # Data filtering removing SNPs with low read.depth
     if (! is.null(rd.trsh)) {
         rd.sign <- ">="
-        mydata.gt.tmp.flt.gq.dp <- mydata.fltr(mydata.gt.tmp.flt.gq, mydata.dp, i, missing.data=mymissing.data, sign=rd.sign, trsh=rd.trsh, na.string="./.")
+        mydata.gt.tmp.flt.gq.dp <- mydata.fltr(mydata.gt.tmp.flt.gq, mydata$DP, i, missing.data = mymissing.data, sign = rd.sign, trsh = rd.trsh, na.string = na.string)
 
-        nb.alleles <- nrow(mydata.gt.tmp.flt.gq.dp[(rowSums(mydata.gt.tmp.flt.gq.dp[,grep(i,colnames(mydata.gt.tmp.flt.gq.dp))] == "./.")/length(grep(i,colnames(mydata.gt.tmp.flt.gq.dp))) <= mymissing.data),])
-        cat(paste("\t- Remaining alleles after DP filtering in ", i,": ", nb.alleles, "\n", sep=""))
+        if (is.na(na.string)) {
+            na.mt <- is.na(mydata.gt.tmp.flt.gq.dp[,grep(i,colnames(mydata.gt.tmp.flt.gq.dp))])
+        } else {
+            na.mt <- mydata.gt.tmp.flt.gq.dp[,grep(i,colnames(mydata.gt.tmp.flt.gq.dp))] == na.string
+        }
+
+        nb.alleles <- nrow(mydata.gt.tmp.flt.gq.dp[(rowSums(na.mt)/length(grep(i,colnames(mydata.gt.tmp.flt.gq.dp))) <= mymissing.data),])
+        cat("\t- Remaining alleles after DP filtering in ", i,": ", nb.alleles, "\n", sep = "")
     } else {
-        mydata.gt.tmp.flt.gq.dp <- mydata.gt
+        mydata.gt.tmp.flt.gq.dp <- mydata$GT
     }
 
 #    # Rename data
 #    assign(paste("mydata.gt.F2",sep=""), mydata.gt.tmp.flt.gq.dp)
 #    assign(paste("my",i,".gt",sep=""), name.gt)
 
-    mydata.gt <- mydata.gt.tmp.flt.gq.dp
+    mydata$GT <- mydata.gt.tmp.flt.gq.dp
 }
 
 # Suffix for output genotype file generated during next step
@@ -241,18 +267,18 @@ if (! is.null(gq.trsh) | ! is.null(rd.trsh)) {
 cat("\nConverting GQ table in R/qtl format...\n")
 
 # File name
-myF2.gt <- paste("tables/", myF2.gt, myflt.suffix, sep="")
-myF2.gtf <- paste(myF2.gt, "csvs", sep=".")
+myF2.gt  <- paste0(result_fd, myF2.gt, myflt.suffix)
+myF2.gtf <- paste0(myF2.gt, ".csvs")
 
 
 # Column associated with name
-mypA <- sapply(mypA, function(x) grep(x, colnames(mydata.gt)))
-myF1A <- grep(myF1A, colnames(mydata.gt))
-myF2A <- grep(myF2A, colnames(mydata.gt))
+mypA <- sapply(mypA, function(x) grep(x, colnames(mydata$GT)))
+myF1A <- grep(myF1A, colnames(mydata$GT))
+myF2A <- grep(myF2A, colnames(mydata$GT))
 
-mypB <- sapply(mypB, function(x) grep(x, colnames(mydata.gt)))
-myF1B <- grep(myF1B, colnames(mydata.gt))
-myF2B <- grep(myF2B, colnames(mydata.gt))
+mypB <- sapply(mypB, function(x) grep(x, colnames(mydata$GT)))
+myF1B <- grep(myF1B, colnames(mydata$GT))
+myF2B <- grep(myF2B, colnames(mydata$GT))
 
 myp <- list(mypA, mypB)
 myF1 <- list(myF1A, myF1B)
@@ -260,8 +286,8 @@ myF2 <- list(myF2A, myF2B)
 
 
 # Table conversion
-if (file.exists("tables/") == FALSE) {dir.create("tables")}
-gt2rqtl(mydata.gt, parents.cln=myp, F1.cln=myF1, F2.cln=myF2, out.fmt="csvs", out.name=myF2.gt, simplify.unass.name=TRUE, alleles=my.alleles)
+# if (file.exists("tables/") == FALSE) {dir.create("tables")}
+gt2rqtl(mydata$GT, parents.cln = myp, F1.cln = myF1, F2.cln = myF2, out.fmt = "csvs", out.name = myF2.gt, alleles = my.alleles, na.string = na.string)
 
 
 #-------------------------#
@@ -270,7 +296,7 @@ gt2rqtl(mydata.gt, parents.cln=myp, F1.cln=myF1, F2.cln=myF2, out.fmt="csvs", ou
 cat("\nLoading cross data with R/qtl...\n")
 
 #mydata.qtl <- read.cross("csvs", ".", genfile=myF2.gtf, phefile=myF2.ptf, estimate.map=FALSE, genotypes = c("AA", "AB", "BB")) # Change my alleles
-mydata.qtl <- read.cross("csvs", ".", genfile=myF2.gtf, phefile=myF2.ptf, estimate.map=FALSE, genotypes=c("LL", "HL", "HH"), alleles=my.alleles) # Change my alleles
+mydata.qtl <- read.cross("csvs", ".", genfile = myF2.gtf, phefile = myF2.ptf, estimate.map = FALSE, genotypes = c("LL", "HL", "HH"), alleles = my.alleles) # Change my alleles
 
 cross.cln <- grep("cross", colnames(mydata.qtl$pheno), ignore.case=TRUE, value=TRUE)
 
@@ -282,130 +308,101 @@ if (! all(sort(unique(mydata.qtl$pheno[,cross.cln])) == myF2.list)) {
 }
 
 # Removing uninformative markers
+myuninfo.mrkr <- vector("list", length(myF2.list)) 
+names(myuninfo.mrkr) <- myF2.list
 for (i in myF2.list) {
-    mydata.qtl.tmp <- subset(mydata.qtl, ind=(pull.pheno(mydata.qtl, cross.cln) == i))
-#    mymap.tmp <- est.map(mydata.qtl.tmp)
-#
-#    mylist.tmp <- unlist(lapply(mymap.tmp, function(x) names(x)[! duplicated(round(x))]))
-    mylist.tmp <- unlist(findDupMarkers(mydata.qtl.tmp, exact.only=FALSE, adjacent.only=TRUE))
-    assign(paste0(i,".inf.mrkr"), mylist.tmp)
+    mydata.qtl.tmp     <- subset(mydata.qtl, ind=(pull.pheno(mydata.qtl, cross.cln) == i))
+    myuninfo.mrkr[[i]] <- unlist(findDupMarkers(mydata.qtl.tmp, exact.only=FALSE, adjacent.only=TRUE))
 }
 
-mymethods <- c()
 
-for (i in c(myF2.list,"combination")) {
+# Methods used for the QTL analysis
+mymethods    <- c("em")
+mymethods.nm <- c("EM")
+if (mymodel != "np") {
+    mymethods    <- c(mymethods, "mr")
+    mymethods.nm <- c(mymethods.nm, "marker regression")
+}
+
+mycomp.ls <- c(myF2.list,"combination")
+myqtl.ls  <- vector("list", length(mycomp.ls))
+names(myqtl.ls) <- mycomp.ls
+
+for (i in mycomp.ls) {
     cat(paste(" --Cross",i,"\n"))
 
     # Subset cross of interest
     if (i != "combination") {
         in.qtl <- subset(mydata.qtl, ind=(pull.pheno(mydata.qtl, cross.cln) == i))
-#        in.qtl <- pull.markers(in.qtl, get(paste0(i,".inf.mrkr")))
-        in.qtl <- drop.markers(in.qtl, get(paste0(i,".inf.mrkr")))
+        in.qtl <- drop.markers(in.qtl, myuninfo.mrkr[[i]])
     } else {
-        mylist.mkr <- mydata.gt[,1]
-        for (j in myF2.list) {
-            if (length(get(paste0(j,".inf.mrkr"))) < length(mylist.mkr)) {
-                mylist.mkr <- get(paste0(j,".inf.mrkr"))
-            }
-    }
-        in.qtl <- mydata.qtl
-#        in.qtl <- pull.markers(in.qtl, mylist.mkr)
-        in.qtl <- drop.markers(in.qtl, mylist.mkr)
+        mylist.mkr <- myuninfo.mrkr %>% unlist() %>% unique()
+        in.qtl     <- drop.markers(mydata.qtl, mylist.mkr)
     }
 
     # Genotype probability calculation (needed for some analysis)
     cat("\t -Computing genotype probability...\n")
     in.qtl <- calc.genoprob(in.qtl)
     
-    myobjects <- c("myobjects")
 
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-    # Scan for QTL using Marker Regression #
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+    #~~~~~~~~~~~~~~#
+    # Scan for QTL #
+    #~~~~~~~~~~~~~~#
 
-    if (mymodel != "np") {
-        cat(paste("\t -Performing marker regresion analysis and permutation computation (", my.n.perm, ")...\n", sep=""))
-        out.mr <- scanone(in.qtl, pheno.col=pheno.cln, method="mr", model=mymodel)
-        out.mr.perm <- scanone(in.qtl, pheno.col=pheno.cln, method="mr", model=mymodel, n.perm=my.n.perm, verbose=FALSE)
-        out.mr.trsh <- as.numeric(sort(out.mr.perm)[round(my.n.perm-my.n.perm*mylod.trsh)])
-        if(max(out.mr[,3]) < out.mr.trsh) {warning("MR method: all LOD scores are under LOD threshold.", immediate.=TRUE, call.=FALSE)}
+    out.ls <- vector("list", length(mymethods))
+    names(out.ls) <- mymethods
+
+    for (m in mymethods) {
+        cat("\t -Performing ", mymethods.nm[mymethods %in% m], " analysis and permutation computation (", my.n.perm, ")...\n", sep="")
+        out <- scanone(in.qtl, pheno.col=pheno.cln, method=m, model=mymodel)
+        out.perm <- scanone(in.qtl, pheno.col=pheno.cln, method=m, model=mymodel, n.perm=my.n.perm, n.cluster = n.cluster, verbose=FALSE)
+        out.trsh <- as.numeric(sort(out.perm)[round(my.n.perm-my.n.perm*mylod.trsh)])
+        if(max(out[,3]) < out.trsh) {warning(m, " method: all LOD scores are under LOD threshold.", immediate.=TRUE, call.=FALSE)}
 
         # Rename positions
-        #out.mr[,2] <- unlist(lapply(rownames(out.mr), function(x) strsplit(x,"_")[[1]][5]))
-        out.mr[,2] <- unlist(lapply(rownames(out.mr), function(x) rev(strsplit(x,"_")[[1]])[1]))
-        
+        out[,2] <- unlist(lapply(rownames(out), function(x) rev(strsplit(x,"_")[[1]])[1]))
+
         # Check for spurious results
-        if (any(is.infinite(out.mr[,3]))) {
+        out <- out[ ! is.na(out[,2]),]
+        if (any(is.infinite(out[,3]))) {
             warning("Infinite values present. They will be replaced by the maximum value.", immediate.=TRUE, call.=FALSE)
-            out.mr[is.infinite(out.mr[,3]),3] <- max(out.mr[!is.infinite(out.mr[,3]),3])
+            out[is.infinite(out[,3]),3] <- max(out[!is.infinite(out[,3]),3])
         }
 
-        # Store methods
-        mymethods <- c(mymethods, "mr")
-
-        # Create object
-        assign(paste(i,".mr",sep=""), out.mr)
-        assign(paste(i,".mr.trsh",sep=""), out.mr.trsh)
-        myobjects <- c(myobjects, "out.mr", "out.mr.trsh")
+        # Store results
+        out.ls[[m]] <- list(lod=out, perm=out.perm, trsh=out.trsh)
     }
-
-
-    #~~~~~~~~~~~~~~~~~~~~~~~#
-    # Scan for QTL using EM #
-    #~~~~~~~~~~~~~~~~~~~~~~~#
-
-    cat(paste("\t -Performing EM analysis and permutation computation (", my.n.perm, ")...\n", sep=""))
-    out.em <- scanone(in.qtl, pheno.col=pheno.cln, method="em", model=mymodel)
-    out.em.perm <- scanone(in.qtl, pheno.col=pheno.cln, method="em", model=mymodel, n.perm=my.n.perm, verbose=FALSE)
-    out.em.trsh <- as.numeric(sort(out.em.perm)[round(my.n.perm-my.n.perm*mylod.trsh)])
-    if(max(out.em[,3]) < out.em.trsh) {warning("EM method: all LOD scores are under LOD threshold.", immediate.=TRUE, call.=FALSE)}
-
-    # Rename positions
-    #out.em[,2] <- unlist(lapply(rownames(out.em), function(x) strsplit(x,"_")[[1]][5]))
-    out.em[,2] <- unlist(lapply(rownames(out.em), function(x) rev(strsplit(x,"_")[[1]])[1]))
-
-    # Check for spurious results
-    out.em <- out.em[ ! is.na(out.em[,2]),]
-    if (any(is.infinite(out.em[,3]))) {
-        warning("Infinite values present. They will be replaced by the maximum value.", immediate.=TRUE, call.=FALSE)
-        out.em[is.infinite(out.em[,3]),3] <- max(out.em[!is.infinite(out.em[,3]),3])
-    }
-
-    # Store methods
-    mymethods <- c(mymethods, "em")
-
-    # Create object
-    assign(paste(i,".em",sep=""), out.em)
-    assign(paste(i,".em.trsh",sep=""), out.em.trsh)
-    myobjects <- c(myobjects, "out.em", "out.em.trsh")
 
     # Creating QTL object
-    assign(paste("mydata.qtl.",i,sep=""), in.qtl)
-    myobjects <- c(myobjects, "in.qtl")
-
-    # Remove tmp objects
-    rm(list=myobjects)
+    myqtl.ls[[i]]         <- out.ls
+    myqtl.ls[[i]]$genopob <- in.qtl
 }
 
+# Save QTL analysis for other scripts to use
+save(myqtl.ls, file = paste0(result_fd, "myqtl.ls.RData"))
 
 # QTL identification
-ce.ordered <- combination.em[ order(combination.em[,3], decreasing=T), ]
-myqtl.mrkr <- rownames( ce.ordered[! duplicated(ce.ordered[1]) & ce.ordered[,3] > combination.em.trsh,] )
+mypeaks    <- summary(myqtl.ls[[3]][["mr"]]$lod, perm=myqtl.ls[[3]][["mr"]]$perm, alpha=mylod.trsh)
+myqtl.mrkr <- rownames(mypeaks[grep("_[0-9ZW]$", mypeaks[,1], perl=TRUE), ])
 myqtl.nb <- length(myqtl.mrkr)
 
+
 # Genotypes at QTL peaks
-mygeno.tb <- pull.geno(mydata.qtl.combination)
+mygeno.tb <- pull.geno(myqtl.ls[[3]]$genoprob)
 myAF.pheno <- data.frame( 
                 "pheno" = pull.pheno(mydata.qtl.combination)[,pheno.cln],
                 "AF" = rowSums(mygeno.tb[ , grep(paste(myqtl.mrkr, collapse="|"), colnames(mygeno.tb)) ]) - myqtl.nb   # Normalized number of "alternative" alleles regarding the number of QTLs
                 )
 
 # Exporting data
-for (i in c(myF2.list,"combination")) {
+for (i in mycomp.ls) {
     for (j in unique(mymethods)) {
         write.table(get(paste(i,j,sep=".")), paste0("tables/",i,".",j,".tsv"), row.names=FALSE, quote=FALSE, sep="\t")
     }
 }
+
+
+
 
 
 #=========#
@@ -418,30 +415,41 @@ cat("\nDrawing graphs...\n")
 #boxplot(mydata.gq[,3:ncol(mydata.gq)])
 #boxplot(mydata.dp[,3:ncol(mydata.dp)])
 
-if (file.exists("graphs/") == FALSE) {dir.create("graphs")}
+if (dir.exists(graph_fd) == FALSE) {dir.create(graph_fd)}
 
-g.prefix <- paste(g.prefix, colnames(mydata.qtl$pheno)[pheno.cln], mymodel, paste("md-",mymissing.data, sep=""), sep=".")
+g.prefix <- paste(g.prefix, colnames(mydata.qtl$pheno)[pheno.cln], mymodel, paste0("md-", mymissing.data), sep=".")
 
 
-for (i in c(myF2.list,"combination")) {
-    for (j in unique(mymethods)) {
+for (i in mycomp.ls) {
 
+    for (m in mymethods) {
+    
+        myqtl.data <- myqtl.ls[[i]][[m]]
+        
         # Determine the max of y axis
-        if (get(paste(i,j,"trsh",sep=".")) > max(get(paste(i,j,sep="."))[,3])) {
-            my.ylim <- ceiling(get(paste(i,j,"trsh",sep=".")))
+        if (myqtl.data$trsh > max(myqtl.data$lod[,3])) {
+            my.ylim <- ceiling(myqtl.data$trsh)
         } else {
-            my.ylim <- ceiling(max(get(paste(i,j,sep="."))[,3]))
+            my.ylim <- ceiling(max(myqtl.data$lod[,3]))
         }
 
-        pdf(paste("graphs/",g.prefix,"_",i,"_",j,".pdf",sep=""), width=15)
-            matplot.data(get(paste(i,j,sep=".")), 3, datatype="freq", ylab="LOD score", ylim.max=my.ylim, abline.h=get(paste(i,j,"trsh",sep=".")), data.order=FALSE)
+        mylod <- rename_chr_SmV7(myqtl.data$lod, 1)
+        mylod <- mylod[! grepl("loc", mylod[,2]), ]
+
+        pdf(paste0(graph_fd,g.prefix,"_",i,"_",m,".pdf"), width=15)
+            matplot.data(mylod, 3, datatype="freq", ylab="LOD score", ylim.max=my.ylim, abline.h=myqtl.data$trsh, data.order=TRUE)
         dev.off()
     }
 }
 
 
 # Phenotype regarding proportion of alleles from QTLs
-pdf(paste0("graphs/","pheno-AF.pdf"), useDingbats=FALSE)
-    boxplot(myAF.pheno[,1] ~ myAF.pheno[,2], ylab="Sum of cercariae shed", xlab="Number of high shedder alleles at QTLs", frame=FALSE)
+pdf(paste0(graph_fd,"pheno-AF.pdf"), useDingbats=FALSE)
+boxplot(myAF.pheno[,1] ~ myAF.pheno[,2], ylab="Sum of cercariae shed", xlab="Number of high shedder alleles at QTLs", frame=FALSE)
+dev.off()
+
+
+pdf(paste0(graph_fd,"pheno-AF.pdf"), width = 15, useDingbats = FALSE)
+plotPXG(mydata.qtl, marker=myqtl.mrkr, pheno.col = pheno.cln)
 dev.off()
 
