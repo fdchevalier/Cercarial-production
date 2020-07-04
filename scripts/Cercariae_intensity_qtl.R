@@ -355,6 +355,7 @@ for (i in mycomp.ls) {
     for (m in mymethods) {
         cat("\t -Performing ", mymethods.nm[mymethods %in% m], " analysis and permutation computation (", my.n.perm, ")...\n", sep="")
         out <- scanone(in.qtl, pheno.col=pheno.cln, method=m, model=mymodel)
+        cat("\t ")
         out.perm <- scanone(in.qtl, pheno.col=pheno.cln, method=m, model=mymodel, n.perm=my.n.perm, n.cluster = n.cluster, verbose=FALSE)
         out.trsh <- as.numeric(sort(out.perm)[round(my.n.perm-my.n.perm*mylod.trsh)])
         if(max(out[,3]) < out.trsh) {warning(m, " method: all LOD scores are under LOD threshold.", immediate.=TRUE, call.=FALSE)}
@@ -374,8 +375,8 @@ for (i in mycomp.ls) {
     }
 
     # Creating QTL object
-    myqtl.ls[[i]]         <- out.ls
-    myqtl.ls[[i]]$genopob <- in.qtl
+    myqtl.ls[[i]]          <- out.ls
+    myqtl.ls[[i]]$genoprob <- in.qtl
 }
 
 # Save QTL analysis for other scripts to use
