@@ -452,7 +452,7 @@ qtl.tb.sum <- function(x, ann.tb, expr.tb, expr.cln, expr.nm=NULL, gff.genes, ba
             mytb.sc[mytb.sc == 1] <- 0
             myimpct.vec <- apply(mytb.impct, 1, function(x) max(x, na.rm=TRUE)) %>% as.numeric()
             mytb.sc <- mytb.sc * myimpct.vec
-            mygb.sc <- sum(mylod.max, sum(mytb.tmp[, 11+k+(1:2)]) / diff(unlist(mypos)), na.rm = TRUE)
+            mygb.sc <- sum(mylod.max, sum(mytb.sc) / diff(unlist(mypos)), na.rm = TRUE)
             # mygb.sc <- sum(mylod.max, sum(mytb.tmp[, 11+k+(1:2)]), na.rm = TRUE)
             if (sum(as.numeric(mytb.tmp[1, 8:(7+k)])) == 0) { mygb.sc <- -mygb.sc }
 
