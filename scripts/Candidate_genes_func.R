@@ -431,10 +431,11 @@ qtl.tb.sum <- function(x, ann.tb, expr.tb, expr.cln, expr.nm=NULL, gff.genes, ba
 
             # Impact related stat
             mytb.impct <- mytb.tmp[,myimpct.cln]
+            nb.iso     <- apply(mytb.impct, 2, function(x) ! all(is.na(x))) %>% sum()
             for (i in 1:nrow(myimpct.tb)) { mytb.impct[ mytb.impct == myimpct.tb[i,1] ] <- myimpct.tb[i,2] }
             myimpct.vec <- na.omit(as.numeric(unlist((mytb.impct))))
             myimpct.sc  <- sum(myimpct.vec)
-            myimpct.sc2 <- round(sum(myimpct.vec)/(length(myimpct.vec)/nb.var), digits=1)
+            myimpct.sc2 <- round(sum(myimpct.vec) / ((length(myimpct.vec) / nb.var) * nb.iso), digits=1)
 
             # LOD related stat
             if (all(is.na(mytb.tmp[, mylod.cln]))) {
