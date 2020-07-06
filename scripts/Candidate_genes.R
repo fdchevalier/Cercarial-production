@@ -243,7 +243,7 @@ for(i in 1:length(myp)) {
                                                if (any(grepl("0[/|]0", x))) { # If homozygous site is the same as reference
                                                    y <- 0
                                                } else {
-                                                   y <- 10
+                                                   y <- 0 # 10
                                                }
                                            } else if (all(! myhet)) { # If no heterozygous
                                                if (strsplit(x, "[/|]") %>% unlist %>% unique %>% length() == 1) { # Same allele everywhere
