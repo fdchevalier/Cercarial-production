@@ -264,14 +264,12 @@ for(i in 1:length(myp)) {
 # Build table
 mydata.tb <- data.frame(mydata$FIX, mydata$GT[, c(mypA, mypB)], mysc.cln, lod=mylod.cln)
 
-mygff.genes <- mygff[ mygff[,3] == "gene", ]
-
 tb.ls <- vector("list", length(myqtl.chr))
 names(tb.ls) <- myqtl.chr
 
 for (i in myqtl.chr) {
-    tb.ls[[i]]$qtl.tb <- qtl.tb(mydata.tb, chr = i, myann, myexpr, myexpr.cln, expr.nm=myexpr.nm, cln.print=9:15)
-    tb.ls[[i]]$qtl.tb.sum <- qtl.tb.sum(tb.ls[[i]]$qtl.tb, myann, myexpr, myexpr.cln, myexpr.nm, mygff.genes,baits.bed=NULL)
+    tb.ls[[i]]$qtl.tb <- qtl.tb(mydata.tb, chr = i, myann, myexpr, myexpr.cln, expr.nm = myexpr.nm, cln.print = 9:15)
+    tb.ls[[i]]$qtl.tb.sum <- qtl.tb.sum(tb.ls[[i]]$qtl.tb, myann, myexpr, myexpr.cln, myexpr.nm, mygff, baits.bed=NULL)
 
     write.table(tb.ls[[i]]$qtl.tb, paste0(result_fd2, "/", i, "_QTL_table_details.tsv"), row.names = FALSE, quote = FALSE, sep = "\t")
     write.table(tb.ls[[i]]$qtl.tb.sum, paste0(result_fd2, "/", i, "_QTL_table_summary.tsv"), row.names = FALSE, quote = FALSE, sep = "\t")

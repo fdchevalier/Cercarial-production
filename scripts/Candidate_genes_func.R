@@ -363,11 +363,11 @@ qtl.tb <- function(x, chr, ann.tb, expr.tb, expr.cln, expr.nm=NULL, cln.print) {
 # Summary table #
 #---------------#
 
-qtl.tb.sum <- function(x, ann.tb, expr.tb, expr.cln, expr.nm=NULL, gff.genes, baits.bed=NULL) {
+qtl.tb.sum <- function(x, ann.tb, expr.tb, expr.cln, expr.nm=NULL, gff, baits.bed=NULL) {
 
     # Usage
     ## x            QTL table from qtl.tb
-    ## gff.genes    GFF file with only gene information
+    ## gff          GFF file
     ## baits.bed    BED coordinated of the baits
     
     chr <- unique(x[,1])
@@ -379,6 +379,8 @@ qtl.tb.sum <- function(x, ann.tb, expr.tb, expr.cln, expr.nm=NULL, gff.genes, ba
 
     k <- length(expr.cln)
 
+    # GFF
+    gff.genes <- mygff[ mygff[,3] == "gene", ]
     gff.genes.qtl <- gff.genes[gff.genes[,1] == chr & gff.genes[,5] >= bf.lim[1] & gff.genes[,4] <= bf.lim[2],]
 
     # mygenes.occ <- unique(gff.genes.qtl[,9])
@@ -391,11 +393,11 @@ qtl.tb.sum <- function(x, ann.tb, expr.tb, expr.cln, expr.nm=NULL, gff.genes, ba
     # myfreq.cln  <- grep("pol.freq",colnames(x))
     mylod.cln <- grep("lod", colnames(x))
 
-    cln.nm   <- c("Chr.", "Gene ID", "v5 gene ID", "Start", "End", "GFF annotation", "HHPred annotation", expr.nm, "Captured", "Nb of variable sites", "Impact score", "Weighted impact score", "Mean LOD", "Median LOD", "Max LOD", "Global score")
+    cln.nm   <- c("Chr.", "Gene ID", "v5 gene ID", "Start", "End", "GFF annotation", "HHPred annotation", expr.nm, "Captured", "Nb of variable sites", "Impact score", "Weighted impact score", "Mean LOD", "Median LOD", "Max LOD", "Global score gene", "Global score CDS")
     mysum.tb <- as.data.frame(matrix(NA, ncol=length(cln.nm), nrow=length(mygenes.occ)))
     for (g in mygenes.occ) {
+    # for (g in "Smp_057210") {
         myidx <- match(g, mygenes.occ)
-        mypv  <- rev(grep("pv.", colnames(x), fixed=TRUE))[1]
 
         if (! is.null(baits.bed)) {
             # Is the gene in the capture array?
@@ -422,6 +424,12 @@ qtl.tb.sum <- function(x, ann.tb, expr.tb, expr.cln, expr.nm=NULL, gff.genes, ba
         
         # Pull out information if the gene is in the variant data table
         if (any(x[,5] == g, na.rm=TRUE)) {
+
+
+            #------#
+            # Gene #
+            #------#
+
             mytb.tmp <- x[ ! is.na(x[,5]) & x[,5] == g, ]
         
             mypos <- as.data.frame(gff.genes[ grepl(g, gff.genes[,9]), c(4,5) ])
@@ -457,7 +465,64 @@ qtl.tb.sum <- function(x, ann.tb, expr.tb, expr.cln, expr.nm=NULL, gff.genes, ba
             # mygb.sc <- sum(mylod.max, sum(mytb.tmp[, 11+k+(1:2)]), na.rm = TRUE)
             if (sum(as.numeric(mytb.tmp[1, 8:(7+k)])) == 0) { mygb.sc <- -mygb.sc }
 
-            
+
+            #-----#
+            # CDS #
+            #-----#
+
+            # Exon related information
+            cds.pos <- gff[grepl(paste0("cds:", g), gff[,"ID"]), ][,4:5] %>% as.matrix() %>% unique() %>% .[order(.[,1]), , drop = FALSE]
+
+            # Check if some CDS are contained in others
+            if (length(unique(cds.pos[,1])) != length(cds.pos[,1]) | length(unique(cds.pos[,2])) != length(cds.pos[,2])) {
+                cds.db <- matrix(NA, ncol = nrow(cds.pos), nrow = nrow(cds.pos))
+                for (i in 1:nrow(cds.pos)) {
+                    cds.db[, i] <- apply(cds.pos, 1, function(x) findInterval(x, cds.pos[i,])) %>% colSums(.) == 3
+                }
+
+                # Update CDS position to remove nested CDS
+                cds.pos <- cds.pos[! colSums(cds.db) > 1, ]
+            }
+
+            if (dim(cds.pos)[1] == 0) {
+                myimpct.sc  <- NA
+                myimpct.sc2 <- NA
+                mygb.cds.sc <- NA
+            } else {
+                cds.vec      <- apply(cds.pos, 1, function(x) findInterval(mytb.tmp[, 2], x) == 1) %>% as.matrix() %>% apply(., 1, any)
+                mytb.cds.tmp <- mytb.tmp[cds.vec, ]
+
+                cds.length <- apply(cds.pos, 1, diff) %>% sum()
+
+                cds.nb.var <- nrow(mytb.cds.tmp)
+
+                # Impact related stat
+                mytb.impct <- mytb.cds.tmp[,myimpct.cln]
+                if (dim(mytb.impct)[1] > 0) {
+                    for (i in 1:nrow(myimpct.tb)) { mytb.impct[ mytb.impct == myimpct.tb[i,1] ] <- myimpct.tb[i,2] }
+                    myimpct.vec <- na.omit(as.numeric(unlist((mytb.impct))))
+                }
+
+                # Global score
+                mytb.sc <- mytb.cds.tmp[, 11+k+(1:2)]
+                if (dim(mytb.sc)[1] == 0) {
+                    mygb.cds.sc <- 0
+                } else {
+                    mytb.sc[mytb.sc == 0] <- 1
+                    mytb.sc <- mytb.sc[, 1] * mytb.sc[, 2]
+                    mytb.sc[mytb.sc == 1] <- 0
+                    myimpct.vec <- apply(mytb.impct, 1, function(x) max(x, na.rm=TRUE)) %>% as.numeric()
+                    mytb.sc <- mytb.sc * myimpct.vec
+                    mygb.cds.sc <- sum(mylod.max, sum(mytb.sc) / cds.length, na.rm = TRUE)
+                    if (sum(as.numeric(mytb.tmp[1, 8:(7+k)])) == 0) { mygb.cds.sc <- -mygb.cds.sc }
+                }
+            }
+
+
+            #----------------#
+            # Building table #
+            #----------------#
+
             mysum.tb[myidx,1:2]  <- mytb.tmp[1,c(1,5)] 
             mysum.tb[myidx,3]    <- old.id
             mysum.tb[myidx,4:5]  <- mypos 
@@ -471,6 +536,7 @@ qtl.tb.sum <- function(x, ann.tb, expr.tb, expr.cln, expr.nm=NULL, gff.genes, ba
             mysum.tb[myidx,13+k] <- mylod.median
             mysum.tb[myidx,14+k] <- mylod.max
             mysum.tb[myidx,15+k] <- mygb.sc
+            mysum.tb[myidx,16+k] <- mygb.cds.sc
 
         } else {
             myexpr.tmp <- expr.tb[ grep(g, expr.tb[,1]) , expr.cln ]
