@@ -397,6 +397,7 @@ qtl.tb.sum <- function(x, ann.tb, expr.tb, expr.cln, expr.nm=NULL, gff, baits.be
 
     # myfreq.cln  <- grep("pol.freq",colnames(x))
     mylod.cln <- grep("lod", colnames(x))
+    max.lod.pos <- x[which.max(x[,mylod.cln]), 2] %>% as.numeric()
 
     cln.nm   <- c("Chr.", "Gene ID", "v5 gene ID", "Start", "End", "GFF annotation", "HHPred annotation", expr.nm, "Captured", "Nb of variable sites", "Impact score", "Weighted impact score", "Mean LOD", "Median LOD", "Max LOD", "Global score gene", "Global score CDS")
     mysum.tb <- as.data.frame(matrix(NA, ncol=length(cln.nm), nrow=length(mygenes.occ)))
@@ -438,7 +439,12 @@ qtl.tb.sum <- function(x, ann.tb, expr.tb, expr.cln, expr.nm=NULL, gff, baits.be
             mytb.tmp <- x[ ! is.na(x[,5]) & x[,5] == g, ]
         
             mypos <- as.data.frame(gff.genes[ grepl(g, gff.genes[,9]), c(4,5) ])
-            if (dim(mypos)[1] == 0) { mypos <- c(NA,NA) }
+            if (dim(mypos)[1] == 0) {
+                mypos <- c(NA,NA)
+            } else {
+                mylod.dist <- abs(mypos[1] - max.lod.pos)
+            }
+
 
             nb.var <- nrow(mytb.tmp)
 
@@ -466,7 +472,7 @@ qtl.tb.sum <- function(x, ann.tb, expr.tb, expr.cln, expr.nm=NULL, gff, baits.be
             mytb.sc[mytb.sc == 1] <- 0
             myimpct.vec <- apply(mytb.impct, 1, function(x) max(x, na.rm=TRUE)) %>% as.numeric()
             mytb.sc <- mytb.sc * myimpct.vec
-            mygb.sc <- sum(mytb.sc) / diff(unlist(mypos))
+            mygb.sc <- sum(mytb.sc) / (diff(unlist(mypos)) * sqrt(mylod.dist)) * 100
             # mygb.sc <- sum(mylod.max, sum(mytb.tmp[, 11+k+(1:2)]), na.rm = TRUE)
             if (sum(as.numeric(mytb.tmp[1, 8:(7+k)])) == 0) { mygb.sc <- -mygb.sc }
 
@@ -518,7 +524,7 @@ qtl.tb.sum <- function(x, ann.tb, expr.tb, expr.cln, expr.nm=NULL, gff, baits.be
                     mytb.sc[mytb.sc == 1] <- 0
                     myimpct.vec <- apply(mytb.impct, 1, function(x) max(x, na.rm=TRUE)) %>% as.numeric()
                     mytb.sc <- mytb.sc * myimpct.vec
-                    mygb.cds.sc <- sum(mytb.sc) / cds.length
+                    mygb.cds.sc <- sum(mytb.sc) / (cds.length * sqrt(mylod.dist)) * 100
                     if (sum(as.numeric(mytb.tmp[1, 8:(7+k)])) == 0) { mygb.cds.sc <- -mygb.cds.sc }
                 }
             }
