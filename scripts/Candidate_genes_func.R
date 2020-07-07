@@ -388,7 +388,12 @@ qtl.tb.sum <- function(x, ann.tb, expr.tb, expr.cln, expr.nm=NULL, gff, baits.be
     mygenes.occ <- na.omit(unique(c(mygenes.occ, x[,5])))
 
     myimpct.cln <- grep("Impact", colnames(x))
-    myimpct.tb  <- as.data.frame(matrix(c("LOW", "MODERATE", "HIGH", "MODIFIER", 0.3, 0.6, 0.9, 0.3), ncol=2))
+    myimpct.tb  <- as.data.frame(matrix(c(
+                                          "LOW",      1,
+                                          "MODERATE", 5,
+                                          "HIGH",     10,
+                                          "MODIFIER", 1
+                                          ), ncol = 2, byrow = TRUE))
 
     # myfreq.cln  <- grep("pol.freq",colnames(x))
     mylod.cln <- grep("lod", colnames(x))
@@ -461,7 +466,7 @@ qtl.tb.sum <- function(x, ann.tb, expr.tb, expr.cln, expr.nm=NULL, gff, baits.be
             mytb.sc[mytb.sc == 1] <- 0
             myimpct.vec <- apply(mytb.impct, 1, function(x) max(x, na.rm=TRUE)) %>% as.numeric()
             mytb.sc <- mytb.sc * myimpct.vec
-            mygb.sc <- sum(mylod.max, sum(mytb.sc) / diff(unlist(mypos)), na.rm = TRUE)
+            mygb.sc <- sum(mytb.sc) / diff(unlist(mypos))
             # mygb.sc <- sum(mylod.max, sum(mytb.tmp[, 11+k+(1:2)]), na.rm = TRUE)
             if (sum(as.numeric(mytb.tmp[1, 8:(7+k)])) == 0) { mygb.sc <- -mygb.sc }
 
@@ -513,7 +518,7 @@ qtl.tb.sum <- function(x, ann.tb, expr.tb, expr.cln, expr.nm=NULL, gff, baits.be
                     mytb.sc[mytb.sc == 1] <- 0
                     myimpct.vec <- apply(mytb.impct, 1, function(x) max(x, na.rm=TRUE)) %>% as.numeric()
                     mytb.sc <- mytb.sc * myimpct.vec
-                    mygb.cds.sc <- sum(mylod.max, sum(mytb.sc) / cds.length, na.rm = TRUE)
+                    mygb.cds.sc <- sum(mytb.sc) / cds.length
                     if (sum(as.numeric(mytb.tmp[1, 8:(7+k)])) == 0) { mygb.cds.sc <- -mygb.cds.sc }
                 }
             }
