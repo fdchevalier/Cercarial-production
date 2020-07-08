@@ -399,10 +399,9 @@ qtl.tb.sum <- function(x, ann.tb, expr.tb, expr.cln, expr.nm=NULL, gff, baits.be
     mylod.cln <- grep("lod", colnames(x))
     max.lod.pos <- x[which.max(x[,mylod.cln]), 2] %>% as.numeric()
 
-    cln.nm   <- c("Chr.", "Gene ID", "v5 gene ID", "Start", "End", "GFF annotation", "HHPred annotation", expr.nm, "Captured", "Nb of variable sites", "Impact score", "Weighted impact score", "Mean LOD", "Median LOD", "Max LOD", "Global score gene", "Global score CDS")
+    cln.nm   <- c("Chr.", "Gene ID", "v5 gene ID", "Start", "End", "GFF annotation", "HHPred annotation", expr.nm, "Captured", "Nb of variable sites", "Impact score", "Weighted impact score", "Mean LOD", "Median LOD", "Max LOD", "Genoscore (gene)", "Genoscore (CDS)")
     mysum.tb <- as.data.frame(matrix(NA, ncol=length(cln.nm), nrow=length(mygenes.occ)))
     for (g in mygenes.occ) {
-    # for (g in "Smp_057210") {
         myidx <- match(g, mygenes.occ)
 
         if (! is.null(baits.bed)) {
