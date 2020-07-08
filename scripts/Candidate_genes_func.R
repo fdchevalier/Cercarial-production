@@ -449,11 +449,10 @@ qtl.tb.sum <- function(x, ann.tb, expr.tb, expr.cln, expr.nm=NULL, gff, baits.be
 
             # Impact related stat
             mytb.impct <- mytb.tmp[,myimpct.cln]
-            nb.iso     <- apply(mytb.impct, 2, function(x) ! all(is.na(x))) %>% sum()
             for (i in 1:nrow(myimpct.tb)) { mytb.impct[ mytb.impct == myimpct.tb[i,1] ] <- myimpct.tb[i,2] }
             myimpct.vec <- na.omit(as.numeric(unlist((mytb.impct))))
             myimpct.sc  <- sum(myimpct.vec)
-            myimpct.sc2 <- round(sum(myimpct.vec) / ((length(myimpct.vec) / nb.var) * nb.iso), digits=1)
+            myimpct.sc2 <- round(sum(myimpct.vec) / ((length(myimpct.vec) / nb.var)), digits=1)
 
             # LOD related stat
             if (all(is.na(mytb.tmp[, mylod.cln]))) {
@@ -472,7 +471,6 @@ qtl.tb.sum <- function(x, ann.tb, expr.tb, expr.cln, expr.nm=NULL, gff, baits.be
             myimpct.vec <- apply(mytb.impct, 1, function(x) max(x, na.rm=TRUE)) %>% as.numeric()
             mytb.sc <- mytb.sc * myimpct.vec
             mygb.sc <- sum(mytb.sc) / (diff(unlist(mypos)) * sqrt(mylod.dist)) * 100
-            # mygb.sc <- sum(mylod.max, sum(mytb.tmp[, 11+k+(1:2)]), na.rm = TRUE)
             if (sum(as.numeric(mytb.tmp[1, 8:(7+k)])) == 0) { mygb.sc <- -mygb.sc }
 
 
@@ -495,8 +493,6 @@ qtl.tb.sum <- function(x, ann.tb, expr.tb, expr.cln, expr.nm=NULL, gff, baits.be
             }
 
             if (dim(cds.pos)[1] == 0) {
-                myimpct.sc  <- NA
-                myimpct.sc2 <- NA
                 mygb.cds.sc <- NA
             } else {
                 cds.vec      <- apply(cds.pos, 1, function(x) findInterval(mytb.tmp[, 2], x) == 1) %>% as.matrix() %>% apply(., 1, any)
