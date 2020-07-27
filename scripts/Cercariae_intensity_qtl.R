@@ -383,7 +383,7 @@ for (i in mycomp.ls) {
 save(myqtl.ls, file = paste0(result_fd, "myqtl.ls.RData"))
 
 # QTL identification
-mypeaks    <- summary(myqtl.ls[[3]][["mr"]]$lod, perm=myqtl.ls[[3]][["mr"]]$perm, alpha=mylod.trsh)
+mypeaks    <- summary(myqtl.ls[[3]][["em"]]$lod, perm=myqtl.ls[[3]][["mr"]]$perm, alpha=mylod.trsh)
 myqtl.mrkr <- rownames(mypeaks[grep("_[0-9ZW]$", mypeaks[,1], perl=TRUE), ])
 myqtl.nb <- length(myqtl.mrkr)
 
