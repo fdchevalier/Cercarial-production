@@ -1,7 +1,10 @@
 .ipynb_checkpoints/
 .snakemake/
-data/
+data/**
+!data/genome/
 !data/genome/sm_dbSNP_v7.vcf
+!data/phenotyping/
+!data/phenotyping/F2.csv
 status/
 results/
-graphs
+graphs/
