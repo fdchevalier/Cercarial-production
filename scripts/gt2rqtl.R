@@ -1,9 +1,9 @@
 #!/usr/bin/env Rscript
 # Title: gt2rqtl.R
-# Version: 0.6
+# Version: 0.7
 # Author: Frédéric CHEVALIER <fcheval@txbiomed.org>
 # Created in: 2016-02-18
-# Modified in: 2020-06-24
+# Modified in: 2020-07-26
 
 
 
@@ -19,6 +19,7 @@
 # Versions #
 #==========#
 
+# v0.7 - 2020-07-26: marker subsampling added
 # v0.6 - 2020-06-24: na.string option added / simplified unassembled scaffold option removed / allele reordering improved
 # v0.5 - 2016-07-16: adapt script to the Sm genome v6
 # v0.4 - 2016-06-21: simplified unassembled scaffold ordered to have SC at the end
@@ -41,7 +42,7 @@
 # Functions #
 #===========#
 
-gt2rqtl <- function(x, parents.cln, F1.cln, F2.cln, alleles=c("A","B"), out.fmt="csvs", out.name, na.string=NA) {
+gt2rqtl <- function(x, parents.cln, F1.cln, F2.cln, alleles=c("A","B"), out.fmt="csvs", out.name, na.string=NA, seed=NULL, nb.markers=NULL) {
 
     #-------#
     # Usage #
@@ -54,8 +55,10 @@ gt2rqtl <- function(x, parents.cln, F1.cln, F2.cln, alleles=c("A","B"), out.fmt=
     # alleles               alleles used to code genotypes. They are the same as the default of the qtl package.
     # out.fmt               file format used to export data. Might be csvs or csvsr. For more details, see R/qtl manuel and book.
     # out.name              base of the filename for exporting data. (optional)
-    # simplify.unass.name   if TRUE, simplify the name of unassembled scaffolds to get only one unassembled scaffold. This is specific of S. manosni genome
+    # simplify.unass.name   if TRUE, simplify the name of unassembled scaffolds to get only one unassembled scaffold. This is specific of S. manosni genome.
     # na.string             what NA value should be (character or NA)
+    # seed                  seed value for subsampling.
+    # nb.markers            number of marker to subsample. Markers are subsampled proportionnaly per chromosome.
 
 
     #---------------------#
@@ -76,6 +79,8 @@ gt2rqtl <- function(x, parents.cln, F1.cln, F2.cln, alleles=c("A","B"), out.fmt=
     if (! is.vector(out.fmt) | length(out.fmt) != 1) {stop("out.fmt must be a vector of one element.")}
     if (! is.vector(out.name) | length(out.name) != 1) {stop("out.name must be a vector of one element.")}
     if (! (is.character(na.string) | is.numeric(na.string) | is.na(na.string))) {stop("out.name must be a vector of one element.")}
+    if (! is.null(seed) & (length(seed) != 1 | ! is.numeric(seed))) {stop("seed must be a numeric vector of one element.")}
+    if (! is.null(nb.markers) & (length(nb.markers) != 1 | ! is.numeric(nb.markers))) {stop("nb.markers must be a numeric vector of one element.")}
 
     # Check if out.fmt is OK
     if (length(grep("^csvs$|^csvsr$", out.fmt)) != 1)  {stop("out.fmt must have the value \"csvs\" or \"csvsr\".")}
@@ -163,6 +168,45 @@ gt2rqtl <- function(x, parents.cln, F1.cln, F2.cln, alleles=c("A","B"), out.fmt=
     
     # Remove uninformative variants
     x <- x[ rowSums(x[,F2.cln] == na.string) != length(F2.cln) , ]
+   
+    # Subsample markers
+    if (! is.null(nb.markers)) {
+        if (is.null(seed)) {warning("The seed is not fixed, subsampling will not be reproducible.", call.=FALSE)}
+
+        # Chromosome ID
+        mychr <- unique(x[,1])
+
+        ## Create an empty list
+        x.sub.markers <- vector("list", length(mychr))
+        names(x.sub.markers) <- mychr
+
+        j <- 0
+        for (i in mychr) {
+
+            # Isolate chromosome and count markers
+            chr      <- x[x[,1] == i, , drop=FALSE]
+            chr.mrkr <- nrow(chr)
+
+            # Generate proportion for sampling
+            prop <- (nb.markers * chr.mrkr) / nrow(x)
+            prop <- round(prop)
+
+            # Sample
+            set.seed(seed + j)
+            x.sub.markers[[i]] <- chr[sort(sample(chr.mrkr, prop)),]
+
+            # Increment j
+            j <- j + 1
+        }
+
+        # Unlist
+        x <- do.call("rbind", x.sub.markers)
+
+        if (nrow(x) != nb.markers) {warning(nrow(x), " markers have been subsampled. This is different from the ", nb.markers, " markers requested because the subsampling is porportional to the initial number of markers per chromosome.", call.=FALSE)}
+
+    }
+
+    # Final set
     cat(paste("\t- The final table will contain",nrow(x),"variants.\n"))
 
     # Replace na.string with real NA
