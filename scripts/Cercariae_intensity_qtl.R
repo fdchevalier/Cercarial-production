@@ -71,6 +71,7 @@ result_fd <- "../results/1-QTL/"
 
 myvcf_f <- paste0(data_fd, "calling/cerc_prod_snpEff_reduced.vcf.gz")
 
+# Numeric format of the different data type
 myfmt <- matrix(c(
             "GT", FALSE,
             "GQ", TRUE,
@@ -86,6 +87,9 @@ myF2.ptf <- paste0(data_fd, "phenotyping/F2.csv")
 
 # Output name of the R/qtl GT table without any filename extension
 myF2.gt <- "F2_geno"
+
+# Seed for replicating random procedures
+myseed <- 1582
 
 
 #-----------------#
@@ -106,7 +110,7 @@ myF2.list <- c("F2A", "F2B")
 
 # GQ and read depth (rd) and missing data thresholds
 ## Assign NULL to skip to the variable to skip the corresponding filtering step
-gq.trsh <- 30
+gq.trsh <- 40
 rd.trsh <- 10
 # mymis.data must be in [0;1[
 mymissing.data <- 0.2
@@ -122,28 +126,27 @@ my.alleles <- c("L", "H")
 # QTL analysis #
 #--------------#
 
-n.cluster <- 3  # ATTENTION: increasing this number carefully (make sure you have sufficient RAM) otherwise server might be unusable
+nb.markers <- 600 # NULL to include all markers
 
-# Number of permutationq to get threshold
+n.cluster <- 3  # ATTENTION: increasing this number could make your server unusable (make sure you have sufficient RAM)
+
+# Number of permutations to get threshold
 my.n.perm <- 1000   # ATTENTION: increasing number will increase computation time substantially
 mylod.trsh <- 0.05
 
-# Model for QTL scan
-pheno.cln <- 8
+# # Model for QTL scan
+# pheno.cln <- 8
 
 # Prefix for graph
-myprefixes <- matrix(c(
-#    #pheno.cln, graph_prefix, scan_model
-#        2,      "no_class",   "np",
-#        3,      "2_classes",  "binary",
-#        4,      "3_classes",  "np"), ncol=3, byrow=T)       # The pheno.cln cannot start at one because it is the ID column
+mypheno.mt <- matrix(c(
     #pheno.cln, graph_prefix, scan_model
-        7,      "sum",      "normal",
-        8,      "average",  "normal"), ncol=3, byrow=T)       # The pheno.cln cannot start at one because it is the ID column
-#        8,      "average",  "np"), ncol=3, byrow=T)       # The pheno.cln cannot start at one because it is the ID column
+        7,      "sum",        "normal",
+        8,      "average",    "normal",
+        9,      "PO",         "normal",
+        10,     "Hb",         "normal"), ncol=3, byrow=TRUE)       # The pheno.cln cannot start at one because it is the ID column
 
-g.prefix <- myprefixes[ myprefixes[,1] == pheno.cln, 2 ]
-mymodel <- myprefixes[ myprefixes[,1] == pheno.cln, 3]
+# g.prefix <- mypheno.mt[ mypheno.mt[,1] == pheno.cln, 2 ]
+# mymodel <- mypheno.mt[ mypheno.mt[,1] == pheno.cln, 3]
 
 
 
@@ -157,7 +160,7 @@ mymodel <- myprefixes[ myprefixes[,1] == pheno.cln, 3]
 #---------------#
 
 if (mymissing.data < 0 | mymissing.data >= 1) { stop("mymissing.data must be in [0;1[") }
-if (! any(grepl(pheno.cln, myprefixes[,1]))) {stop("The pheno.cln value is unknown in myprefixes table.", call.=FALSE)}
+if (! any(grepl(pheno.cln, mypheno.mt[,1]))) {stop("The pheno.cln value is unknown in mypheno.mt table.", call.=FALSE)}
 
 if (! dir.exists(result_fd)) { dir.create(result_fd, recursive = TRUE)
 
@@ -196,9 +199,6 @@ if (any(grepl("1/0", as.matrix(mydata$GT[, -(1:2)]), fixed = TRUE))) {
 # Remove uninformative markers (same as reference or between all parents)
 myvec  <- apply(mydata$GT[, colnames(mydata$GT) %in% c(mypA, mypB)], 1, function(x) all(x == "0/0", na.rm=TRUE) | all(x == "1/1", na.rm=TRUE))
 mydata <- lapply(mydata, function(x) x[! myvec, ])
-
-
-
 
 
 #-----------------------------#
@@ -245,10 +245,6 @@ for (i in myF2.list) {
         mydata.gt.tmp.flt.gq.dp <- mydata$GT
     }
 
-#    # Rename data
-#    assign(paste("mydata.gt.F2",sep=""), mydata.gt.tmp.flt.gq.dp)
-#    assign(paste("my",i,".gt",sep=""), name.gt)
-
     mydata$GT <- mydata.gt.tmp.flt.gq.dp
 }
 
@@ -267,8 +263,11 @@ if (! is.null(gq.trsh) | ! is.null(rd.trsh)) {
 cat("\nConverting GQ table in R/qtl format...\n")
 
 # File name
-myF2.gt  <- paste0(result_fd, myF2.gt, myflt.suffix)
-myF2.gtf <- paste0(myF2.gt, ".csvs")
+if (is.null(nb.markers)) {
+    myF2.gt <- paste0(result_fd, myF2.gt, myflt.suffix)
+} else {
+    myF2.gt <- paste0(result_fd, myF2.gt, myflt.suffix, "_", nb.markers)
+}
 
 
 # Column associated with name
@@ -286,8 +285,7 @@ myF2 <- list(myF2A, myF2B)
 
 
 # Table conversion
-# if (file.exists("tables/") == FALSE) {dir.create("tables")}
-gt2rqtl(mydata$GT, parents.cln = myp, F1.cln = myF1, F2.cln = myF2, out.fmt = "csvs", out.name = myF2.gt, alleles = my.alleles, na.string = na.string)
+gt2rqtl(mydata$GT, parents.cln = myp, F1.cln = myF1, F2.cln = myF2, out.fmt = "csvs", out.name = myF2.gt, alleles = my.alleles, na.string = na.string, seed = myseed, nb.markers = nb.markers)
 
 
 #-------------------------#
@@ -295,11 +293,10 @@ gt2rqtl(mydata$GT, parents.cln = myp, F1.cln = myF1, F2.cln = myF2, out.fmt = "c
 #-------------------------#
 cat("\nLoading cross data with R/qtl...\n")
 
-#mydata.qtl <- read.cross("csvs", ".", genfile=myF2.gtf, phefile=myF2.ptf, estimate.map=FALSE, genotypes = c("AA", "AB", "BB")) # Change my alleles
-mydata.qtl <- read.cross("csvs", ".", genfile = myF2.gtf, phefile = myF2.ptf, estimate.map = FALSE, genotypes = c("LL", "HL", "HH"), alleles = my.alleles) # Change my alleles
+mydata.qtl <- read.cross("csvs", ".", genfile = paste0(myF2.gt, ".csvs"), phefile = myF2.ptf, estimate.map = FALSE, genotypes = c("LL", "HL", "HH"), alleles = my.alleles)
 
 cross.cln <- grep("cross", colnames(mydata.qtl$pheno), ignore.case=TRUE, value=TRUE)
-
+    
 # Check if cross ID can be find in the qtl data
 if (length(cross.cln) != 1) {stop("Can't identify the cross column.")}
 if (! all(sort(unique(mydata.qtl$pheno[,cross.cln])) == myF2.list)) {
@@ -307,7 +304,7 @@ if (! all(sort(unique(mydata.qtl$pheno[,cross.cln])) == myF2.list)) {
     stop(paste("Can't find", myF2.msg,"in the cross column."))
 }
 
-# Removing uninformative markers
+# Identifying uninformative markers
 myuninfo.mrkr <- vector("list", length(myF2.list)) 
 names(myuninfo.mrkr) <- myF2.list
 for (i in myF2.list) {
@@ -316,67 +313,86 @@ for (i in myF2.list) {
 }
 
 
-# Methods used for the QTL analysis
-mymethods    <- c("em")
-mymethods.nm <- c("EM")
-if (mymodel != "np") {
-    mymethods    <- c(mymethods, "mr")
-    mymethods.nm <- c(mymethods.nm, "marker regression")
-}
+# List to store results
+mypheno.qtl.ls  <- vector("list", nrow(mypheno.mt))
+names(mypheno.qtl.ls) <- mypheno.mt[,2]
 
-mycomp.ls <- c(myF2.list,"combination")
-myqtl.ls  <- vector("list", length(mycomp.ls))
-names(myqtl.ls) <- mycomp.ls
+# Analyze all phenotypes
+for (p in 1:nrow(mypheno.mt)) {
+    
+    # Model for QTL scan
+    mymodel <- mypheno.mt[p, 3]
 
-for (i in mycomp.ls) {
-    cat(paste(" --Cross",i,"\n"))
+    # Phenotype column
+    pheno.cln <- as.numeric(mypheno.mt[p, 1])
 
-    # Subset cross of interest
-    if (i != "combination") {
-        in.qtl <- subset(mydata.qtl, ind=(pull.pheno(mydata.qtl, cross.cln) == i))
-        in.qtl <- drop.markers(in.qtl, myuninfo.mrkr[[i]])
-    } else {
-        mylist.mkr <- myuninfo.mrkr %>% unlist() %>% unique()
-        in.qtl     <- drop.markers(mydata.qtl, mylist.mkr)
+    # Methods used for the QTL analysis
+    mymethods    <- c("em")
+    mymethods.nm <- c("EM")
+    if (mymodel != "np") {
+        mymethods    <- c(mymethods, "mr")
+        mymethods.nm <- c(mymethods.nm, "marker regression")
     }
 
-    # Genotype probability calculation (needed for some analysis)
-    cat("\t -Computing genotype probability...\n")
-    in.qtl <- calc.genoprob(in.qtl)
-    
+    # List to store QTL and related information
+    mycomp.ls <- c(myF2.list,"combination")
+    myqtl.ls  <- vector("list", length(mycomp.ls))
+    names(myqtl.ls) <- mycomp.ls
 
-    #~~~~~~~~~~~~~~#
-    # Scan for QTL #
-    #~~~~~~~~~~~~~~#
+    for (i in mycomp.ls) {
+        cat(paste(" --Cross",i,"\n"))
 
-    out.ls <- vector("list", length(mymethods))
-    names(out.ls) <- mymethods
-
-    for (m in mymethods) {
-        cat("\t -Performing ", mymethods.nm[mymethods %in% m], " analysis and permutation computation (", my.n.perm, ")...\n", sep="")
-        out <- scanone(in.qtl, pheno.col=pheno.cln, method=m, model=mymodel)
-        cat("\t ")
-        out.perm <- scanone(in.qtl, pheno.col=pheno.cln, method=m, model=mymodel, n.perm=my.n.perm, n.cluster = n.cluster, verbose=FALSE)
-        out.trsh <- as.numeric(sort(out.perm)[round(my.n.perm-my.n.perm*mylod.trsh)])
-        if(max(out[,3]) < out.trsh) {warning(m, " method: all LOD scores are under LOD threshold.", immediate.=TRUE, call.=FALSE)}
-
-        # Rename positions
-        out[,2] <- unlist(lapply(rownames(out), function(x) rev(strsplit(x,"_")[[1]])[1]))
-
-        # Check for spurious results
-        out <- out[ ! is.na(out[,2]),]
-        if (any(is.infinite(out[,3]))) {
-            warning("Infinite values present. They will be replaced by the maximum value.", immediate.=TRUE, call.=FALSE)
-            out[is.infinite(out[,3]),3] <- max(out[!is.infinite(out[,3]),3])
+        # Subset cross of interest
+        if (i != "combination") {
+            in.qtl <- subset(mydata.qtl, ind=(pull.pheno(mydata.qtl, cross.cln) == i))
+            in.qtl <- drop.markers(in.qtl, myuninfo.mrkr[[i]])
+        } else {
+            mylist.mkr <- myuninfo.mrkr %>% unlist() %>% unique()
+            in.qtl     <- drop.markers(mydata.qtl, mylist.mkr)
         }
 
-        # Store results
-        out.ls[[m]] <- list(lod=out, perm=out.perm, trsh=out.trsh)
+        # Genotype probability calculation (needed for some analysis)
+        cat("\t -Computing genotype probability...\n")
+        in.qtl <- calc.genoprob(in.qtl)
+        
+
+        #~~~~~~~~~~~~~~#
+        # Scan for QTL #
+        #~~~~~~~~~~~~~~#
+
+        out.ls <- vector("list", length(mymethods))
+        names(out.ls) <- mymethods
+
+        for (m in mymethods) {
+            cat("\t -Performing ", mymethods.nm[mymethods %in% m], " analysis and permutation computation (", my.n.perm, ")...\n", sep="")
+            out <- scanone(in.qtl, pheno.col=pheno.cln, method=m, model=mymodel)
+            cat("\t")
+            out.perm <- scanone(in.qtl, pheno.col=pheno.cln, method=m, model=mymodel, n.perm=my.n.perm, n.cluster = n.cluster, verbose=FALSE)
+            out.trsh <- as.numeric(sort(out.perm)[round(my.n.perm-my.n.perm*mylod.trsh)])
+            if(max(out[,3]) < out.trsh) {warning(m, " method: all LOD scores are under LOD threshold.", immediate.=TRUE, call.=FALSE)}
+
+            # Rename positions
+            out[,2] <- unlist(lapply(rownames(out), function(x) rev(strsplit(x,"_")[[1]])[1]))
+
+            # Check for spurious results
+            out <- out[ ! is.na(out[,2]),]
+            if (any(is.infinite(out[,3]))) {
+                warning("Infinite values present. They will be replaced by the maximum value.", immediate.=TRUE, call.=FALSE)
+                out[is.infinite(out[,3]),3] <- max(out[!is.infinite(out[,3]),3])
+            }
+
+            # Store results
+            out.ls[[m]] <- list(lod=out, perm=out.perm, trsh=out.trsh)
+        }
+
+        # Creating QTL object
+        myqtl.ls[[i]]          <- out.ls
+        myqtl.ls[[i]]$genoprob <- in.qtl
     }
 
-    # Creating QTL object
-    myqtl.ls[[i]]          <- out.ls
-    myqtl.ls[[i]]$genoprob <- in.qtl
+    # Save in the designated slot
+    mypheno.qtl.ls[[mypheno.mt[p,2]]] <- myqtl.ls
+
 }
 
 # Save QTL analysis for other scripts to use
@@ -418,6 +434,7 @@ cat("\nDrawing graphs...\n")
 
 if (dir.exists(graph_fd) == FALSE) {dir.create(graph_fd)}
 
+g.prefix <- mypheno.mt[ mypheno.mt[,1] == pheno.cln, 2 ]
 g.prefix <- paste(g.prefix, colnames(mydata.qtl$pheno)[pheno.cln], mymodel, paste0("md-", mymissing.data), sep=".")
 
 
