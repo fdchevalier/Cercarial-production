@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 # Title: Cercaire_intensity_qtl.R
 # Version: 0.2
-# Author: Frédéric CHEVALIER <fcheval@txbiomed.org>
+# Author: Frédéric CHEVALIER <fcheval@txbiomed.org>, Winka LE CLEC'H <winkal@txbiomed.org>
 # Created in: 2016-02-18
 # Modified in: 2016-07-15
 
@@ -126,7 +126,7 @@ my.alleles <- c("L", "H")
 # QTL analysis #
 #--------------#
 
-nb.markers <- 600 # NULL to include all markers
+nb.markers <- 400 # NULL to include all markers
 
 n.cluster <- 3  # ATTENTION: increasing this number could make your server unusable (make sure you have sufficient RAM)
 
@@ -263,11 +263,7 @@ if (! is.null(gq.trsh) | ! is.null(rd.trsh)) {
 cat("\nConverting GQ table in R/qtl format...\n")
 
 # File name
-if (is.null(nb.markers)) {
-    myF2.gt <- paste0(result_fd, myF2.gt, myflt.suffix)
-} else {
-    myF2.gt <- paste0(result_fd, myF2.gt, myflt.suffix, "_", nb.markers)
-}
+myF2.gt <- paste0(result_fd, myF2.gt, myflt.suffix)
 
 
 # Column associated with name
@@ -285,7 +281,7 @@ myF2 <- list(myF2A, myF2B)
 
 
 # Table conversion
-gt2rqtl(mydata$GT, parents.cln = myp, F1.cln = myF1, F2.cln = myF2, out.fmt = "csvs", out.name = myF2.gt, alleles = my.alleles, na.string = na.string, seed = myseed, nb.markers = nb.markers)
+gt2rqtl(mydata$GT, parents.cln = myp, F1.cln = myF1, F2.cln = myF2, out.fmt = "csvs", out.name = myF2.gt, alleles = my.alleles, na.string = na.string)
 
 
 #-------------------------#
@@ -312,6 +308,8 @@ for (i in myF2.list) {
     myuninfo.mrkr[[i]] <- unlist(findDupMarkers(mydata.qtl.tmp, exact.only=FALSE, adjacent.only=TRUE))
 }
 
+# List to store QTL and related information
+mycomp.ls <- c(myF2.list,"combination")
 
 # List to store results
 mypheno.qtl.ls  <- vector("list", nrow(mypheno.mt))
@@ -334,8 +332,7 @@ for (p in 1:nrow(mypheno.mt)) {
         mymethods.nm <- c(mymethods.nm, "marker regression")
     }
 
-    # List to store QTL and related information
-    mycomp.ls <- c(myF2.list,"combination")
+    # QTL list
     myqtl.ls  <- vector("list", length(mycomp.ls))
     names(myqtl.ls) <- mycomp.ls
 
@@ -390,36 +387,172 @@ for (p in 1:nrow(mypheno.mt)) {
         myqtl.ls[[i]]$genoprob <- in.qtl
     }
 
-    # Save in the designated slot
+    # Store in the designated slot
     mypheno.qtl.ls[[mypheno.mt[p,2]]] <- myqtl.ls
 
 }
 
 # Save QTL analysis for other scripts to use
-save(myqtl.ls, file = paste0(result_fd, "myqtl.ls.RData"))
+save(mypheno.qtl.ls, file = paste0(result_fd, "mypheno.qtl.ls.RData"))
 
 # QTL identification
-mypeaks    <- summary(myqtl.ls[[3]][["em"]]$lod, perm=myqtl.ls[[3]][["mr"]]$perm, alpha=mylod.trsh)
-myqtl.mrkr <- rownames(mypeaks[grep("_[0-9ZW]$", mypeaks[,1], perl=TRUE), ])
-myqtl.nb <- length(myqtl.mrkr)
-
-
-# Genotypes at QTL peaks
-mygeno.tb <- pull.geno(myqtl.ls[[3]]$genoprob)
-myAF.pheno <- data.frame( 
-                "pheno" = pull.pheno(mydata.qtl.combination)[,pheno.cln],
-                "AF" = rowSums(mygeno.tb[ , grep(paste(myqtl.mrkr, collapse="|"), colnames(mygeno.tb)) ]) - myqtl.nb   # Normalized number of "alternative" alleles regarding the number of QTLs
-                )
-
-# Exporting data
-for (i in mycomp.ls) {
-    for (j in unique(mymethods)) {
-        write.table(get(paste(i,j,sep=".")), paste0("tables/",i,".",j,".tsv"), row.names=FALSE, quote=FALSE, sep="\t")
-    }
+for (p in 1:nrow(mypheno.mt)) {
+    # mypeaks    <- summary(mypheno.qtl.ls[[3]][["em"]]$lod, perm=mypheno.qtl.ls[[3]][["em"]]$perm, alpha=mylod.trsh, pvalues=TRUE)
+    # myqtl.mrkr <- rownames(mypeaks[grep("_[0-9ZW]$", mypeaks[,1], perl=TRUE), ])
+    # myqtl.nb <- length(myqtl.mrkr)
+    summary(mypheno.qtl.ls[[p]][[3]][["em"]]$lod, perm=mypheno.qtl.ls[[p]][[3]][["em"]]$perm, alpha=mylod.trsh, pvalues=TRUE) %>% print()
 }
 
 
+# # Genotypes at QTL peaks
+# mygeno.tb <- pull.geno(myqtl.ls[[3]]$genoprob)
+# myAF.pheno <- data.frame( 
+#                 "pheno" = pull.pheno(mydata.qtl.combination)[,pheno.cln],
+#                 "AF" = rowSums(mygeno.tb[ , grep(paste(myqtl.mrkr, collapse="|"), colnames(mygeno.tb)) ]) - myqtl.nb   # Normalized number of "alternative" alleles regarding the number of QTLs
+#                 )
 
+# # Exporting data
+# for (i in mycomp.ls) {
+#     for (j in unique(mymethods)) {
+#         write.table(get(paste(i,j,sep=".")), paste0("tables/",i,".",j,".tsv"), row.names=FALSE, quote=FALSE, sep="\t")
+#     }
+# }
+
+
+#---------------------------#
+# Scan for QTL interactions #
+#---------------------------#
+
+# Work only on average and combine crosses
+myqtl.ls <- mypheno.qtl.ls[["average"]]
+pheno.cln <- 8
+
+#~~~~~~~~~~~~~~~~~~~#
+# Subsample markers #
+#~~~~~~~~~~~~~~~~~~~#
+
+# This is needed to reduce the computation time for testing interaction
+
+# Chromosome ID
+mylod.tb <- myqtl.ls[["combination"]][["em"]]$lod
+mychr <- unique(mylod.tb[,1])
+
+# Create an empty list
+lod.sub.markers <- vector("list", length(mychr))
+names(lod.sub.markers) <- mychr
+
+# Subsample markers proportionally to the number of markers per chromosome
+j <- 0
+for (i in mychr) {
+
+    # Isolate chromosome and count markers
+    chr      <- mylod.tb[mylod.tb[,1] == i, , drop=FALSE]
+    chr.mrkr <- nrow(chr)
+
+    # Generate proportion for sampling
+    prop <- (nb.markers * chr.mrkr) / nrow(mylod.tb)
+    prop <- round(prop)
+
+    # Sample
+    set.seed(myseed + j)
+    lod.sub.markers[[i]] <- chr[sort(sample(chr.mrkr, prop)),]
+
+    # Increment j
+    j <- j + 1
+}
+
+# Unlist
+myrow.nm <- lapply(lod.sub.markers, row.names) %>% unlist()
+
+if (length(myrow.nm) != nb.markers) {warning(length(myrow.nm), " markers have been subsampled. This is different from the ", nb.markers, " markers requested because the subsampling is porportional to the initial number of markers per chromosome.", call.=FALSE)}
+
+# Drop all but a selected number of markers 
+genoprob      <- myqtl.ls[["combination"]][["genoprob"]]
+myqtl.reduced <- pull.markers(genoprob, myrow.nm)
+
+
+#~~~~~~~~~~~~~~~~~~~~#
+# Test insteractions #
+#~~~~~~~~~~~~~~~~~~~~#
+
+# Compute first interaction
+myqtl.reduced <- calc.genoprob(myqtl.reduced)
+myqtl.i       <- scantwo(myqtl.reduced, pheno.col=pheno.cln)
+
+# Compute permutation thresholds
+myperm <- c(1:10)
+st.perm  <- vector("list", length(myperm))
+
+for (i in myperm) {
+    set.seed(myseed+i)
+    st.perm[[i]] <- scantwo(myqtl.reduced, pheno.col=pheno.cln, n.perm=100, n.cluster=10)
+}
+
+## combined the permutation files together (c.scantwoperm function)
+st.perm <- do.call("c", st.perm)
+
+## Save operm object as a file
+save(st.perm, file = paste0(result_fd, "scantwo_perm.RData"))
+
+## Get the thresholds as a vector
+thres <- summary(st.perm) %>% as.data.frame()
+colnames(thres) <- (summary(st.perm) %>% attributes())$"names"
+thres_vec <- thres[1,]
+
+## QTL interaction/additive effect summary table (complement to heatmap)
+summary(myqtl.i, thresholds = as.numeric(thres_vec[1:5]))
+
+
+# Chromosomes of interest
+mychr <- c("SM_V7_1", "SM_V7_2", "SM_V7_3", "SM_V7_4", "SM_V7_5")
+
+myqtl.tb <- summary(myqtl.ls[["combination"]][["em"]]$lod, perm=myqtl.ls[["combination"]][["em"]]$perm)
+
+myqtl.mrkr <- myqtl.tb[ myqtl.tb[,1] %in% mychr, ]
+
+# Reorder markers
+myqtl.mrkr[,1] <- factor(myqtl.mrkr[,1], levels(myqtl.mrkr[,1]) %>% sort())
+myqtl.mrkr     <- myqtl.mrkr[ order(myqtl.mrkr[,1]), ]
+
+mygeno.sim <- sim.geno(myqtl.ls[[3]]$genoprob, n.draw=500)
+
+# mypeak <- summary(myqtl.ls[[3]]$em$lod, threshold=2.5) # Why this threshold
+mypos  <- sapply(rownames(myqtl.mrkr), function(x) find.markerpos(mygeno.sim, x)) %>% .[2,] %>% unlist()
+
+myqtl.imp <- makeqtl(mygeno.sim, chr=myqtl.mrkr[,1], pos=mypos)
+
+myqtl.fit <- fitqtl(mygeno.sim, qtl=myqtl.imp, formula=y~Q1+Q2+Q3+Q4+Q5, pheno.col=pheno.cln)
+
+summary(myqtl.fit)
+
+
+#------------------#
+# Allele dominance #
+#------------------#
+
+mygeno.cd <- expand.grid(rep(list(my.alleles), length(my.alleles))) %>% apply(., 1, function(x) x[order(match(x,my.alleles))] %>% paste(., collapse='')) %>% unique()
+
+mygeno.pheno <- vector("list", length(nrow(myqtl.mrkr)))
+for (m in 1:nrow(myqtl.mrkr)) {
+    mygeno.pheno[[m]] <- data.frame(geno = pull.geno(myqtl.ls[["combination"]]$genoprob, chr=myqtl.mrkr[m,1])[,rownames(myqtl.mrkr)[m]] %>% sapply(., function(x) mygeno.cd[x]),
+                                    pheno = pull.pheno(myqtl.ls[["combination"]]$genoprob, pheno.cln))
+}
+
+# Number of genotypes
+mygeno.count <- lapply(mygeno.pheno, function(x) data.frame(count = sapply(mygeno.cd, function(y) { z <- x[,1] ; sum(z == y, na.rm=TRUE) }),
+                                                            poportion = sapply(mygeno.cd, function(y) { z <- x[,1] ; sum(z == y, na.rm=TRUE) / sum(!is.na(z)) })) )
+names(mygeno.count) <- rownames(myqtl.mrkr)
+
+# Test normality of phenotype data
+pull.pheno(myqtl.ls[["combination"]]$genoprob, pheno.cln) %>% shapiro.test() %>% print()
+
+# Test overall differences at each locus
+lapply(mygeno.pheno, function(x) kruskal.test(x$pheno ~ x$geno))
+
+# Test differences between genotype at each locus
+lapply(mygeno.pheno, function(x) pairwise.wilcox.test(x$pheno, x$geno)) # p.adjust="bon"
+
+# Interesting link for boxplot and bar+star: https://stat.ethz.ch/pipermail/r-help/2008-July/166918.html
 
 
 #=========#
@@ -434,31 +567,54 @@ cat("\nDrawing graphs...\n")
 
 if (dir.exists(graph_fd) == FALSE) {dir.create(graph_fd)}
 
-g.prefix <- mypheno.mt[ mypheno.mt[,1] == pheno.cln, 2 ]
-g.prefix <- paste(g.prefix, colnames(mydata.qtl$pheno)[pheno.cln], mymodel, paste0("md-", mymissing.data), sep=".")
-
-
-for (i in mycomp.ls) {
-
-    for (m in mymethods) {
+# Analyze all phenotypes
+for (p in 1:nrow(mypheno.mt)) {
     
-        myqtl.data <- myqtl.ls[[i]][[m]]
+    # Model for QTL scan
+    mymodel <- mypheno.mt[p, 3]
+
+    # Phenotype column
+    pheno.cln <- as.numeric(mypheno.mt[p, 1])
+    # g.prefix <- mypheno.mt[p, 2 ]
+    # g.prefix <- paste(g.prefix, colnames(mydata.qtl$pheno)[pheno.cln], mymodel, paste0("md-", mymissing.data), sep=".")
+    g.prefix <- paste(colnames(mydata.qtl$pheno)[pheno.cln], mymodel, paste0("md-", mymissing.data), sep=".")
+
+    myqtl.ls <- mypheno.qtl.ls[[p]]
+
+    for (i in mycomp.ls) {
+
+        for (m in mymethods) {
         
-        # Determine the max of y axis
-        if (myqtl.data$trsh > max(myqtl.data$lod[,3])) {
-            my.ylim <- ceiling(myqtl.data$trsh)
-        } else {
-            my.ylim <- ceiling(max(myqtl.data$lod[,3]))
+            myqtl.data <- myqtl.ls[[i]][[m]]
+            
+            # Determine the max of y axis
+            if (myqtl.data$trsh > max(myqtl.data$lod[,3])) {
+                my.ylim <- ceiling(myqtl.data$trsh)
+            } else {
+                my.ylim <- ceiling(max(myqtl.data$lod[,3]))
+            }
+
+            mylod <- rename_chr_SmV7(myqtl.data$lod, 1)
+            mylod <- mylod[! grepl("loc", mylod[,2]), ]
+
+            pdf(paste0(graph_fd,g.prefix,"_",i,"_",m,".pdf"), width=15)
+                matplot.data(mylod, 3, datatype="freq", ylab="LOD score", ylim.max=my.ylim, abline.h=myqtl.data$trsh, data.order=TRUE)
+            dev.off()
         }
-
-        mylod <- rename_chr_SmV7(myqtl.data$lod, 1)
-        mylod <- mylod[! grepl("loc", mylod[,2]), ]
-
-        pdf(paste0(graph_fd,g.prefix,"_",i,"_",m,".pdf"), width=15)
-            matplot.data(mylod, 3, datatype="freq", ylab="LOD score", ylim.max=my.ylim, abline.h=myqtl.data$trsh, data.order=TRUE)
-        dev.off()
     }
 }
+
+
+# Effect plot
+
+pdf(paste0(graph_fd,"effect_plot.pdf"), width = 15, useDingbats = FALSE)
+layout(matrix(1:5), nrow=1)
+
+for (m in 1:nrow(myqtl.mrkr)) {
+    a <- list(a, effectplot(myqtl.ls[["combination"]]$genoprob, pheno.col=mypheno.cln, rownames(myqtl.mrkr[m,]), draw=FALSE)
+}
+dev.off()
+
 
 
 # Phenotype regarding proportion of alleles from QTLs
