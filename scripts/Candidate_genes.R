@@ -57,16 +57,18 @@ graph_fd   <- "../graphs/"
 result_fd1 <- "../results/1-QTL/"
 result_fd2 <- "../results/2-Candidate genes/"
 
-myvcf_f  <- paste0(data_fd, "calling/cerc_prod_snpEff_1-3-5.vcf.gz")
+myvcf_f  <- paste0(data_fd, "calling/cerc_prod_snpEff_1-2-3-4-5.vcf.gz")
 mygff_f  <- paste0(data_fd, "genome/schistosoma_mansoni.PRJEA36577.WBPS14.annotations.gff3")
 myann_f  <- "~/data/sm_Gene_table/Sm_v7.1_ann/Sm_v7.1_transcript_table_gff-hhpred.tsv" 
 # Expression data
-myexpr_f <- "~/data/sm_Gene_table/TPM_isoforms_Sm_v7.1.tsv"
-myexpr.cln <- 3:4    # Column containing juvenil and adult expression data
-myexpr.nm  <- paste0("TPM ", c("sp 48h", "cercariae"))
+myexpr_f <- paste0(data_fd, "genome/TPM_isoforms_Sm_2020-08-07.tsv")
+myexpr.cln <- 4:7    # Column containing juvenil and adult expression data
+myexpr.nm  <- paste0("TPM ", c("sp 1d", "sp 3d", "sp shedder", "cercariae"))
 
 
-myqtl.ls <- paste0(result_fd1, "myqtl.ls.RData")
+mypheno.qtl.ls <- paste0(result_fd1, "mypheno.qtl.ls.RData")
+myqtl.i <- paste0(result_fd1, "scantwo_qtl.i.RData")
+st.perm <- paste0(result_fd1, "scantwo_perm.RData")
 
 myfmt <- matrix(c(
             "GT", FALSE,
@@ -116,9 +118,11 @@ my.alleles <- c("L", "H")
 # QTL analysis #
 #--------------#
 
-
 # Number of permutationq to get threshold
 mylod.trsh <- 0.05
+
+# Drop
+mydrop <- 1.8
 
 
 
@@ -146,16 +150,28 @@ myann <- read.csv(myann_f, header=TRUE, sep="\t", stringsAsFactors = FALSE)
 myexpr <- read.csv(myexpr_f, header=TRUE, sep="\t", stringsAsFactors = FALSE)
 
 # Load QTL data
-load(myqtl.ls)
+load(mypheno.qtl.ls)
+myqtl.ls <- mypheno.qtl.ls[["average"]]
 
-mylod     <- myqtl.ls[["combination"]][["em"]]$lod
-myperm    <- myqtl.ls[["combination"]][["em"]]$perm
+# mylod     <- myqtl.ls[["combination"]][["em"]]$lod
+# myperm    <- myqtl.ls[["combination"]][["em"]]$perm
 
-mypeaks   <- summary(mylod, perm=myperm, alpha=mylod.trsh)
+# mypeaks   <- summary(mylod, perm=myperm, alpha=mylod.trsh)
 
-myqtl.chr <- mypeaks[rownames(mypeaks[grep("_[0-9ZW]$", mypeaks[,1], perl=TRUE), ]), 1]
+# myqtl.chr <- mypeaks[rownames(mypeaks[grep("_[0-9ZW]$", mypeaks[,1], perl=TRUE), ]), 1]
 
-lodint.ls <- lapply(myqtl.chr, function(x) lodint(myqtl.ls[[3]][[2]]$lod, chr = x, drop = 1.8))
+load(myqtl.i)
+load(st.perm)
+
+# Get the thresholds as a vector
+thres <- summary(st.perm) %>% as.data.frame()
+colnames(thres) <- (summary(st.perm) %>% attributes())$"names"
+thres_vec <- thres[1,]
+
+# Chromosomes of interest
+myqtl.chr <- summary(myqtl.i, thresholds = as.numeric(thres_vec[1:5])) %>% as.data.frame() %>% .[,1:2] %>% unlist() %>% unique() %>% as.vector() %>% sort()
+
+lodint.ls <- lapply(myqtl.chr, function(x) lodint(myqtl.ls[[3]][[2]]$lod, chr = x, drop = mydrop))
 
 
 # Load VCF data
