@@ -281,7 +281,7 @@ myF2 <- list(myF2A, myF2B)
 
 
 # Table conversion
-gt2rqtl(mydata$GT, parents.cln = myp, F1.cln = myF1, F2.cln = myF2, out.fmt = "csvs", out.name = myF2.gt, alleles = my.alleles, na.string = na.string)
+gt2rqtl(mydata$GT, parents.cln = myp, F1.cln = myF1, F2.cln = myF2, out.fmt = "csvs", out.name = myF2.gt, alleles = my.alleles, na.string = na.string, add.distance = TRUE)
 
 
 #-------------------------#
@@ -491,7 +491,8 @@ for (i in myperm) {
 ## combined the permutation files together (c.scantwoperm function)
 st.perm <- do.call("c", st.perm)
 
-## Save operm object as a file
+## Save scantwo and permutation objects as files
+save(myqtl.i, file = paste0(result_fd, "scantwo_qtl.i.RData"))
 save(st.perm, file = paste0(result_fd, "scantwo_perm.RData"))
 
 ## Get the thresholds as a vector
@@ -504,7 +505,7 @@ summary(myqtl.i, thresholds = as.numeric(thres_vec[1:5]))
 
 
 # Chromosomes of interest
-mychr <- c("SM_V7_1", "SM_V7_2", "SM_V7_3", "SM_V7_4", "SM_V7_5")
+mychr <- summary(myqtl.i, thresholds = as.numeric(thres_vec[1:5])) %>% as.data.frame() %>% .[,1:2] %>% unlist() %>% unique() %>% as.vector() %>% sort()
 
 myqtl.tb <- summary(myqtl.ls[["combination"]][["em"]]$lod, perm=myqtl.ls[["combination"]][["em"]]$perm)
 
