@@ -1,9 +1,9 @@
 #!/usr/bin/env Rscript
 # Title: gt2rqtl.R
-# Version: 0.6
+# Version: 0.7
 # Author: Frédéric CHEVALIER <fcheval@txbiomed.org>
 # Created in: 2016-02-18
-# Modified in: 2020-06-24
+# Modified in: 2020-08-02
 
 
 
@@ -19,6 +19,7 @@
 # Versions #
 #==========#
 
+# v0.7 - 2020-08-02: physical distance info added
 # v0.6 - 2020-06-24: na.string option added / simplified unassembled scaffold option removed / allele reordering improved
 # v0.5 - 2016-07-16: adapt script to the Sm genome v6
 # v0.4 - 2016-06-21: simplified unassembled scaffold ordered to have SC at the end
@@ -41,7 +42,7 @@
 # Functions #
 #===========#
 
-gt2rqtl <- function(x, parents.cln, F1.cln, F2.cln, alleles=c("A","B"), out.fmt="csvs", out.name, na.string=NA) {
+gt2rqtl <- function(x, parents.cln, F1.cln, F2.cln, alleles=c("A","B"), out.fmt="csvs", out.name, na.string=NA, add.distance=FALSE) {
 
     #-------#
     # Usage #
@@ -54,8 +55,9 @@ gt2rqtl <- function(x, parents.cln, F1.cln, F2.cln, alleles=c("A","B"), out.fmt=
     # alleles               alleles used to code genotypes. They are the same as the default of the qtl package.
     # out.fmt               file format used to export data. Might be csvs or csvsr. For more details, see R/qtl manuel and book.
     # out.name              base of the filename for exporting data. (optional)
-    # simplify.unass.name   if TRUE, simplify the name of unassembled scaffolds to get only one unassembled scaffold. This is specific of S. manosni genome
-    # na.string             what NA value should be (character or NA)
+    # simplify.unass.name   if TRUE, simplify the name of unassembled scaffolds to get only one unassembled scaffold. This is specific of S. manosni genome.
+    # na.string             what NA value should be (character or NA).
+    # add.distance          add physical distance (in Mb) to the table.
 
 
     #---------------------#
@@ -76,6 +78,7 @@ gt2rqtl <- function(x, parents.cln, F1.cln, F2.cln, alleles=c("A","B"), out.fmt=
     if (! is.vector(out.fmt) | length(out.fmt) != 1) {stop("out.fmt must be a vector of one element.")}
     if (! is.vector(out.name) | length(out.name) != 1) {stop("out.name must be a vector of one element.")}
     if (! (is.character(na.string) | is.numeric(na.string) | is.na(na.string))) {stop("out.name must be a vector of one element.")}
+    if (! is.logical(add.distance)) {stop("add.dsitance must be logical.")}
 
     # Check if out.fmt is OK
     if (length(grep("^csvs$|^csvsr$", out.fmt)) != 1)  {stop("out.fmt must have the value \"csvs\" or \"csvsr\".")}
@@ -190,8 +193,19 @@ gt2rqtl <- function(x, parents.cln, F1.cln, F2.cln, alleles=c("A","B"), out.fmt=
     x[,c(1:2,F2.cln)] <- apply(x[, c(1:2,F2.cln)], 2, function(y) {gsub(" *","", y)})
 
     # Final table
-    x <- cbind(paste(1:nrow(x),x[,1], x[,2], sep="_"), x[,c(1,F2.cln)])
-    colnames(x)[1:2] <- c("id","")
+    dist   <- NULL
+    if (add.distance) {
+        dist    <- as.numeric(x[,2]) / 1e6
+    }
+
+    x <- cbind(paste(1:nrow(x),x[,1], x[,2], sep="_"), x[,1], dist, x[,F2.cln])
+
+    if (add.distance) {
+        colnames(x)[1:3] <- c("id", "", "")
+    } else {
+        colnames(x)[1:2] <- c("id", "")
+    }
+
 
     if (out.fmt == "csvsr") {
         myrow.nm <- FALSE
