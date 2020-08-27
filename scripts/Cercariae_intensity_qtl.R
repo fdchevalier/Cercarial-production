@@ -34,6 +34,7 @@ library("qtl")      # For R/qtl commands
 library("vcfR")
 library("magrittr")
 library("snow")     # For parallel permutations
+library("multcompView")	# For multcompLetters
 
 
 
@@ -110,7 +111,7 @@ myF2.list <- c("F2A", "F2B")
 
 # GQ and read depth (rd) and missing data thresholds
 ## Assign NULL to skip to the variable to skip the corresponding filtering step
-gq.trsh <- 40
+gq.trsh <- 30
 rd.trsh <- 10
 # mymis.data must be in [0;1[
 mymissing.data <- 0.2
@@ -364,6 +365,7 @@ for (p in 1:nrow(mypheno.mt)) {
             cat("\t -Performing ", mymethods.nm[mymethods %in% m], " analysis and permutation computation (", my.n.perm, ")...\n", sep="")
             out <- scanone(in.qtl, pheno.col=pheno.cln, method=m, model=mymodel)
             cat("\t")
+            set.seed(myseed + p + match(i, mycomp.ls) + match(m, mymethods))
             out.perm <- scanone(in.qtl, pheno.col=pheno.cln, method=m, model=mymodel, n.perm=my.n.perm, n.cluster = n.cluster, verbose=FALSE)
             out.trsh <- as.numeric(sort(out.perm)[round(my.n.perm-my.n.perm*mylod.trsh)])
             if(max(out[,3]) < out.trsh) {warning(m, " method: all LOD scores are under LOD threshold.", immediate.=TRUE, call.=FALSE)}
@@ -475,6 +477,15 @@ myqtl.reduced <- pull.markers(genoprob, myrow.nm)
 # Test insteractions #
 #~~~~~~~~~~~~~~~~~~~~#
 
+# Reorder chromosomes (for plotting purpose)
+## Select and reorder main chromosomes
+mychr.o <- names(myqtl.reduced$geno) %>% grep("_[0-9]$|W$", ., value=TRUE) %>% sort() %>% match(., names(myqtl.reduced$geno))
+## Add the others
+mychr.o <- c(names(myqtl.reduced$geno)[mychr.o], names(myqtl.reduced$geno)[-mychr.o])
+## Reorder
+myqtl.reduced$geno <- myqtl.reduced$geno[mychr.o]
+
+
 # Compute first interaction
 myqtl.reduced <- calc.genoprob(myqtl.reduced)
 myqtl.i       <- scantwo(myqtl.reduced, pheno.col=pheno.cln)
@@ -533,10 +544,14 @@ summary(myqtl.fit)
 
 mygeno.cd <- expand.grid(rep(list(my.alleles), length(my.alleles))) %>% apply(., 1, function(x) x[order(match(x,my.alleles))] %>% paste(., collapse='')) %>% unique()
 
-mygeno.pheno <- vector("list", length(nrow(myqtl.mrkr)))
+mygeno.pheno        <- vector("list", nrow(myqtl.mrkr))
+names(mygeno.pheno) <- myqtl.mrkr[,1]
 for (m in 1:nrow(myqtl.mrkr)) {
     mygeno.pheno[[m]] <- data.frame(geno = pull.geno(myqtl.ls[["combination"]]$genoprob, chr=myqtl.mrkr[m,1])[,rownames(myqtl.mrkr)[m]] %>% sapply(., function(x) mygeno.cd[x]),
                                     pheno = pull.pheno(myqtl.ls[["combination"]]$genoprob, pheno.cln))
+
+	# Reorder factor
+	mygeno.pheno[[m]]$geno <- factor(mygeno.pheno[[m]]$geno, mygeno.cd)
 }
 
 # Number of genotypes
@@ -551,7 +566,18 @@ pull.pheno(myqtl.ls[["combination"]]$genoprob, pheno.cln) %>% shapiro.test() %>%
 lapply(mygeno.pheno, function(x) kruskal.test(x$pheno ~ x$geno))
 
 # Test differences between genotype at each locus
-lapply(mygeno.pheno, function(x) pairwise.wilcox.test(x$pheno, x$geno)) # p.adjust="bon"
+lapply(mygeno.pheno, function(x) pairwise.wilcox.test(x$pheno, x$geno, p.adjust="none")) # p.adjust="bon"
+
+mya.test <- vector("list", length(mygeno.pheno))
+mya.letters <- vector("list", length(mygeno.pheno))
+for (i in 1:length(mygeno.pheno)) {
+    mya.test[[i]] <- pairwise.wilcox.test(mygeno.pheno[[i]]$pheno, mygeno.pheno[[i]]$geno, p.adjust.method="none")
+    d <- as.vector(mya.test[[i]]$p.value)
+    names(d) <- sapply(colnames(mya.test[[i]]$p.value), function(x) paste0(x, "-", rownames(mya.test[[i]]$p.value))) %>% as.vector()
+    d <- d[!is.na(d)]
+    mya.letters[[i]] <- multcompLetters(d)
+}
+
 
 # Interesting link for boxplot and bar+star: https://stat.ethz.ch/pipermail/r-help/2008-July/166918.html
 
@@ -606,8 +632,19 @@ for (p in 1:nrow(mypheno.mt)) {
 }
 
 
-# Effect plot
+# Interaction heatmap
+## Rename chromosomes
+mylevels                <- levels(myqtl.i$map$chr) %>% gsub("SM_V7_", "", .)
+levels(myqtl.i$map$chr) <- mylevels
+## Select chromosomes to plot
+chr.o <- mylevels[1:8]
+## Plot
+pdf(paste0(graph_fd,"scantwo_plot.pdf"), useDingbats = FALSE)
+    plot(myqtl.i, chr=chr.o, lower="int", upper="add", col.scheme="viridis")
+dev.off()
 
+
+# Effect plot
 pdf(paste0(graph_fd,"effect_plot.pdf"), width = 15, useDingbats = FALSE)
 layout(matrix(1:5), nrow=1)
 
