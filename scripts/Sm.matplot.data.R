@@ -1,8 +1,8 @@
 # Title: Sm.matplot.data.R
-# Version: 3.3
+# Version: 3.4
 # Author: Frédéric CHEVALIER <fcheval@txbiomed.org>
 # Created in: 2012-08-03
-# Modified in: 2018-01-03
+# Modified in: 2020-08-28
 
 
 
@@ -18,6 +18,7 @@
 # Versions #
 #==========#
 
+# v3.4 - 2020-08-28: add lty option
 # v3.3 - 2018-01-03: transform data to respect ylim.max if use
 # v3.2 - 2017-08-28: add arrow.head option
 # v3.1 - 2017-06-23: by.pos improved to plot empty chromosomes
@@ -88,7 +89,7 @@ arr.gene <- function (x, y, col="black") {
 # Function to plot the SNP by chromosomes #
 #-----------------------------------------#
 
-matplot.data <- function (data.tab, column, datatype, myrunmed=NULL, loess.span=NULL, ylim.min=NULL, ylim.max=NULL, ylab=NULL, xlab="Chromosomes", xlab.axis=c("1", "2", "3", "4", "5", "6", "7", "Z", "Unassembled scaffolds"), col=c("red","black"), chr.bg="grey90", cex.axis=0.9, cex=1, lwd=1, type="l", pch=20, abline.h=NULL, abline.col="blue", abline.lty=3, abline.lwd=1, arrow.head=NULL, arrow.head.col="black", data.order=TRUE, by.pos=FALSE, add=FALSE, verbose=FALSE) {
+matplot.data <- function (data.tab, column, datatype, myrunmed=NULL, loess.span=NULL, ylim.min=NULL, ylim.max=NULL, ylab=NULL, xlab="Chromosomes", xlab.axis=c("1", "2", "3", "4", "5", "6", "7", "Z", "Unassembled scaffolds"), col=c("red","black"), chr.bg="grey90", cex.axis=0.9, cex=1, lwd=1, lty=1, type="l", pch=20, abline.h=NULL, abline.col="blue", abline.lty=3, abline.lwd=1, arrow.head=NULL, arrow.head.col="black", data.order=TRUE, by.pos=FALSE, add=FALSE, verbose=FALSE) {
 
 
     #~~~~~~~#
@@ -339,7 +340,7 @@ matplot.data <- function (data.tab, column, datatype, myrunmed=NULL, loess.span=
                 if (any(grepl("SC", k))) { mycolor <- col[2] } else { mycolor <- col[1] }
 
                 # Draw
-                matplot(plot.pos, rmdt.tmp, col=mycolor, type="l", add=TRUE, lwd=lwd)
+                matplot(plot.pos, rmdt.tmp, col=mycolor, type="l", add=TRUE, lwd=lwd, lty=lty)
             }
             
 			if (verbose) {cat(paste(i, "-", chr.names[i]), "\n")}

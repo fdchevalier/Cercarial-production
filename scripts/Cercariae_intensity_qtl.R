@@ -141,6 +141,10 @@ mylod.trsh <- 0.05
 # Prefix for graph
 mypheno.mt <- matrix(c(
     #pheno.cln, graph_prefix, scan_model
+        3,      "d1",         "normal",
+        4,      "d2",         "normal",
+        5,      "d3",         "normal",
+        6,      "d4",         "normal",
         7,      "sum",        "normal",
         8,      "average",    "normal",
         9,      "PO",         "normal",
@@ -473,9 +477,9 @@ genoprob      <- myqtl.ls[["combination"]][["genoprob"]]
 myqtl.reduced <- pull.markers(genoprob, myrow.nm)
 
 
-#~~~~~~~~~~~~~~~~~~~~#
-# Test insteractions #
-#~~~~~~~~~~~~~~~~~~~~#
+#~~~~~~~~~~~~~~~~~~~#
+# Test interactions #
+#~~~~~~~~~~~~~~~~~~~#
 
 # Reorder chromosomes (for plotting purpose)
 ## Select and reorder main chromosomes
@@ -623,13 +627,110 @@ for (p in 1:nrow(mypheno.mt)) {
 
             mylod <- rename_chr_SmV7(myqtl.data$lod, 1)
             mylod <- mylod[! grepl("loc", mylod[,2]), ]
+            mylod[,2] <- as.numeric(mylod[,2])
 
             pdf(paste0(graph_fd,g.prefix,"_",i,"_",m,".pdf"), width=15)
-                matplot.data(mylod, 3, datatype="freq", ylab="LOD score", ylim.max=my.ylim, abline.h=myqtl.data$trsh, data.order=TRUE)
+                matplot.data(mylod, 3, datatype="freq", ylab="LOD score", ylim.max=my.ylim, abline.h=myqtl.data$trsh, data.order=TRUE, by.pos=TRUE)
             dev.off()
         }
     }
 }
+
+
+# Superimposed LOD scores for cercarial shedding time points
+p.ls  <- c(3:6,8)-2
+# myclr <- viridisLite::viridis(length(p.ls), end=0.8, direction=-1)
+myclr <- c(rgb(1, 0, 0, alpha=0.5), gray.colors(length(p.ls) - 1, start=0.05, end=0.75, gamm=1)) %>% rev()
+# myclr <- viridisLite::magma(length(p.ls))
+# mylwd <- seq(1, 6, length.out=length(p.ls))
+mylwd <- c(rep(1, length(p.ls) - 1), 3)
+# mylty <- 5:1
+for (i in mycomp.ls) {
+    for (m in mymethods) {
+		
+		g.prefix <- paste(i, m, paste0("md-", mymissing.data), sep=".")
+
+		mymax <- lapply(mypheno.qtl.ls[p.ls], function(x) unlist(x[[i]][[m]][["lod"]][,3]) %>% max()) %>% unlist() %>% max()
+
+        pdf(paste0(graph_fd,g.prefix,".pdf"), width=15)
+	
+        for (p in rev(p.ls)) {
+    
+			# Phenotype column
+			pheno.cln <- as.numeric(mypheno.mt[p, 1])
+
+			myqtl.ls <- mypheno.qtl.ls[[p]]
+			
+			myqtl.data <- myqtl.ls[[i]][[m]]
+            
+            # Determine the max of y axis
+            if (myqtl.data$trsh > max(myqtl.data$lod[,3])) {
+                my.ylim <- ceiling(myqtl.data$trsh)
+            } else {
+                my.ylim <- ceiling(max(myqtl.data$lod[,3]))
+            }
+
+            mylod     <- rename_chr_SmV7(myqtl.data$lod, 1) %>% as.data.frame()
+            mylod     <- mylod[! grepl("loc", mylod[,2]), ]
+            mylod[,2] <- as.numeric(mylod[,2])
+
+            p.i <- match(p, p.ls)
+            if (p.i == length(p.ls)) {
+                myadd <- FALSE
+            } else {
+                myadd <- TRUE
+            }
+
+            matplot.data(mylod, 3, datatype="freq", ylab="LOD score", ylim.max=mymax, col=rep(myclr[p.i], 2), data.order=TRUE, by.pos=TRUE, lwd=mylwd[p.i], chr.bg="white", add=myadd)
+        }
+
+        legend("topright", legend=c("Week 4 PI", "Week 5 PI", "Week 6 PI", "Week 7 PI", "Average"), col=myclr, bty="n", lty=1, lwd=mylwd, xjust=0) # Need work on the adjustment
+        
+        dev.off()
+    }
+}
+
+
+# Separate LOD scores for separate shedding time points
+myrow <- 4
+pdf(paste0(graph_fd,g.prefix,"panel_weeks.pdf"), width=10, height=4*myrow)
+
+par(mar=c(5,4.5,3,1.5) + 0.1)
+
+layout(matrix(1:myrow, ncol=1))
+
+for (p in 1:nrow(mypheno.mt[1:4,])) {
+    
+    # Model for QTL scan
+    mymodel <- mypheno.mt[p, 3]
+
+    # Phenotype column
+    pheno.cln <- as.numeric(mypheno.mt[p, 1])
+
+    myqtl.ls <- mypheno.qtl.ls[[p]]
+
+    # for (i in mycomp.ls) {
+    for (i in "combination") {
+		m <- "em"
+
+        my.ylim <- lapply(mypheno.qtl.ls[p.ls], function(x) unlist(x[[i]][[m]][["lod"]][,3]) %>% max()) %>% unlist() %>% max() %>% signif(., 2)
+
+        # for (m in mymethods) {
+        for (m in m) {
+        
+            myqtl.data <- myqtl.ls[[i]][[m]]
+
+            mylod <- rename_chr_SmV7(myqtl.data$lod, 1)
+            mylod <- mylod[! grepl("loc", mylod[,2]), ]
+            mylod[,2] <- as.numeric(mylod[,2])
+
+            matplot.data(mylod, 3, datatype="freq", ylab="LOD score", ylim.min=0, ylim.max=my.ylim, data.order=TRUE, by.pos=TRUE)
+            mtext(paste0(LETTERS[p], "."), side=3, line=0.75, at=line2user(par("mar")[2],2), cex=par("cex")*2.5, adj=0)
+            title(paste("Shedding", p), cex.main=par("cex")*3)
+        }
+    }
+}
+dev.off()
 
 
 # Interaction heatmap
