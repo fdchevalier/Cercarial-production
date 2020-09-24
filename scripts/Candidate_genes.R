@@ -45,6 +45,7 @@ library("rtracklayer")
 # Working directory
 #setwd(file.path(getwd(), "scripts"))
 
+source("Candidate_genes_func.R")
 
 
 #===========#
@@ -59,11 +60,14 @@ result_fd2 <- "../results/2-Candidate genes/"
 
 myvcf_f  <- paste0(data_fd, "calling/cerc_prod_snpEff_1-2-3-4-5.vcf.gz")
 mygff_f  <- paste0(data_fd, "genome/schistosoma_mansoni.PRJEA36577.WBPS14.annotations.gff3")
-myann_f  <- "~/data/sm_Gene_table/Sm_v7.1_ann/Sm_v7.1_transcript_table_gff-hhpred.tsv" 
+myann_f  <- paste0(data_fd, "genome/Sm_transcript_table_gff-hhpred_2020-09-21.tsv")
+
 # Expression data
 myexpr_f <- paste0(data_fd, "genome/TPM_isoforms_Sm_2020-08-07.tsv")
-myexpr.cln <- 4:7    # Column containing juvenil and adult expression data
-myexpr.nm  <- paste0("TPM ", c("sp 1d", "sp 3d", "sp shedder", "cercariae"))
+# myexpr.cln <- 4:7    
+# myexpr.nm  <- paste0("TPM ", c("sp 1d", "sp 3d", "sp shedder", "cercariae"))
+myexpr.cln <- 6:7    
+myexpr.nm  <- paste0("TPM ", c("sp shedder", "cercariae"))
 
 
 mypheno.qtl.ls <- paste0(result_fd1, "mypheno.qtl.ls.RData")
@@ -134,9 +138,6 @@ mydrop <- 1.8
 # Sanity checks #
 #---------------#
 
-if (mymissing.data < 0 | mymissing.data >= 1) { stop("mymissing.data must be in [0;1[") }
-if (! any(grepl(pheno.cln, myprefixes[,1]))) {stop("The pheno.cln value is unknown in myprefixes table.", call.=FALSE)}
-
 if (! dir.exists(result_fd2)) { dir.create(result_fd2, recursive = TRUE) }
 
 #--------------#
@@ -153,7 +154,7 @@ myexpr <- read.csv(myexpr_f, header=TRUE, sep="\t", stringsAsFactors = FALSE)
 load(mypheno.qtl.ls)
 myqtl.ls <- mypheno.qtl.ls[["average"]]
 
-# mylod     <- myqtl.ls[["combination"]][["em"]]$lod
+mylod     <- myqtl.ls[["combination"]][["em"]]$lod
 # myperm    <- myqtl.ls[["combination"]][["em"]]$perm
 
 # mypeaks   <- summary(mylod, perm=myperm, alpha=mylod.trsh)

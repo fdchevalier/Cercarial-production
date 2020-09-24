@@ -261,7 +261,7 @@ qtl.tb <- function(x, chr, ann.tb, expr.tb, expr.cln, expr.nm=NULL, cln.print) {
 
     }
     
-    cln.nm <- c("Gene", "GFF_annotation", "HHPred_annotation", expr.nm)
+    cln.nm <- c("Gene", "GFF annotation", "HHsearch annotation", expr.nm)
     mymain.genes.tb <- foreach(j=1:length(myinfo.lg), .combine='rbind') %dopar% {
     # for (j in (1:length(myinfo.lg))) {
         myidx <- myinfo.lg[[j]]
@@ -340,7 +340,7 @@ qtl.tb <- function(x, chr, ann.tb, expr.tb, expr.cln, expr.nm=NULL, cln.print) {
     mygenes.tb[ mygenes.tb == "" ] <- NA
     mygenes.tb <- as.data.frame(mygenes.tb)
 
-    cln.nm.b <- c("Gene (hit ", "GFF annotation (hit ", "HHPred annotation (hit ", paste(expr.nm, "(hit "), "Transcript (hit ", "Region (hit ", "Impact (hit ", "Type (hit ", "DNA mutation (hit ", "Protein mutation (hit ")
+    cln.nm.b <- c("Gene (hit ", "GFF annotation (hit ", "HHsearch annotation (hit ", paste(expr.nm, "(hit "), "Transcript (hit ", "Region (hit ", "Impact (hit ", "Type (hit ", "DNA mutation (hit ", "Protein mutation (hit ")
     cln.nm <- NULL
     for (i in 1:(mymax/length(cln.nm.b))) { cln.nm <- c(cln.nm, paste0(cln.nm.b, i, ")")) }
     colnames(mygenes.tb) <- cln.nm
@@ -399,7 +399,7 @@ qtl.tb.sum <- function(x, ann.tb, expr.tb, expr.cln, expr.nm=NULL, gff, baits.be
     mylod.cln <- grep("lod", colnames(x))
     max.lod.pos <- x[which.max(x[,mylod.cln]), 2] %>% as.numeric()
 
-    cln.nm   <- c("Chr.", "Gene ID", "v5 gene ID", "Start", "End", "GFF annotation", "HHPred annotation", expr.nm, "Captured", "Nb of variable sites", "Impact score", "Weighted impact score", "Mean LOD", "Median LOD", "Max LOD", "Genoscore (gene)", "Genoscore (CDS)")
+    cln.nm   <- c("Chr.", "Gene ID", "v5 gene ID", "Start", "End", "GFF annotation", "HHsearch annotation", expr.nm, "Captured", "Nb of variable sites", "Impact score", "Weighted impact score", "Mean LOD", "Median LOD", "Max LOD", "Genoscore (gene)", "Genoscore (CDS)")
     mysum.tb <- as.data.frame(matrix(NA, ncol=length(cln.nm), nrow=length(mygenes.occ)))
     for (g in mygenes.occ) {
         myidx <- match(g, mygenes.occ)
