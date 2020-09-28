@@ -524,7 +524,7 @@ mychr <- summary(myqtl.i, thresholds = as.numeric(thres_vec[1:5])) %>% as.data.f
 
 myqtl.tb <- summary(myqtl.ls[["combination"]][["em"]]$lod, perm=myqtl.ls[["combination"]][["em"]]$perm)
 
-myqtl.mrkr <- myqtl.tb[ myqtl.tb[,1] %in% mychr, ]
+myqtl.mrkr <- myqtl.tb[ myqtl.tb[,1] %in% paste0("SM_V7_",mychr), ]
 
 # Reorder markers
 myqtl.mrkr[,1] <- factor(myqtl.mrkr[,1], levels(myqtl.mrkr[,1]) %>% sort())
