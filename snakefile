@@ -17,6 +17,8 @@ rule all:
         expand("data/libraries/{sample}/{sample}_sorted_MD_recal.bam", sample=SAMPLES),
         expand("data/libraries/{sample}/{sample}_sorted_MD_recal.bam.bai", sample=SAMPLES),
         expand("data/libraries/{sample}/{sample}_sorted_MD_recal.flagstat", sample=SAMPLES),
+        expand("data/libraries/{sample}/{sample}_Z.cov", sample=SAMPLES),
+        expand("data/libraries/{sample}/{sample}_Z.sex", sample=SAMPLES),
         expand("data/libraries/{sample}/{sample}.gvcf.gz", sample=SAMPLES),
         "data/calling/cerc_prod.gvcf.gz",
         expand("data/calling/cerc_prod.{contig}.vcf.gz", contig=CONTIGS),
@@ -100,6 +102,23 @@ rule stats:
          samtools flagstat "{input.bam}" >> "{output}" ; \
          echo  "\n" >> "{output}"'
 
+rule z_cov:
+    input:
+        bam="data/libraries/{sample}/{sample}_sorted_MD_recal.bam",
+        bai="data/libraries/{sample}/{sample}_sorted_MD_recal.bam.bai"
+    output:
+        protected("data/libraries/{sample}/{sample}_Z.cov")
+    shell:
+        'samtools view -u "{input.bam}" SM_V7_ZW | bedtools genomecov -ibam - -d | grep -w "SM_V7_ZW" | awk \'$3 > 0 {{print}}\' > "{output}"'
+
+rule z_sex:
+    input:
+        "data/libraries/{sample}/{sample}_Z.cov"
+    output:
+        protected("data/libraries/{sample}/{sample}_Z.sex")
+    shell:
+        'scripts/schisto_sex_RD.R --file "{input}"'
+
 rule calling:
     input:
         bam="data/libraries/{sample}/{sample}_sorted_MD_recal.bam",
@@ -112,6 +131,16 @@ rule calling:
         'sleep 30s $[ ( $RANDOM % 100 )  + 1 ]s ; '
         'gatk --java-options "-Xmx2g" HaplotypeCaller -R "{input.genome}" -I "{input.bam}" -D "{input.sites}" --output-mode EMIT_ALL_ACTIVE_SITES -ERC GVCF -O "{output}"'
 
+rule combining:
+    input:
+        gvcfs=expand("data/libraries/{sample}/{sample}.gvcf.gz", sample=SAMPLES),
+        genome="data/genome/schistosoma_mansoni.PRJEA36577.WBPS14.genomic.fa",
+        sites="data/genome/sm_dbSNP_v7.vcf"
+    output:
+        temp("data/calling/cerc_prod.gvcf.gz")
+    run:
+        gvcfs=" --variant ".join(input.gvcfs)
+        shell('gatk --java-options "-Xmx2g" CombineGVCFs -R "{input.genome}" {gvcfs} -D "{input.sites}" -O "{output}"')
 
 rule genotype_variants:
     input:
@@ -124,7 +153,6 @@ rule genotype_variants:
         contig=r"{contig}"
     shell:
         'gatk --java-options "-Xmx2g"  GenotypeGVCFs -R "{input.genome}" -V "{input.gvcf}" -D "{input.sites}" -L {params.contig} -O "{output}"'
-    
 
 rule merge_variants:
     input:
