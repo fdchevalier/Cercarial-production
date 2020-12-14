@@ -145,7 +145,7 @@ pk.rpt <- function ( x, sign, trsh, cln.print=NULL, cln.nm.ext=NULL, res.folder,
 #-------------------------------------------------------------#
 
 # qtl.tb <- function(x, x.fltr, chr, pv.cln, bf.cor, ann.tb, expr.tb, expr.cln, expr.nm=NULL, cln.print) {
-qtl.tb <- function(x, chr, ann.tb, expr.tb, expr.cln, expr.nm=NULL, cln.print) {
+qtl.tb <- function(x, chr, ann.tb, expr.tb, expr.cln, expr.nm=NULL, cln.print, keep.syn=FALSE) {
 
     # Usage
     ## x            a table with allele frequencies, genotypes, and p-values
@@ -158,6 +158,7 @@ qtl.tb <- function(x, chr, ann.tb, expr.tb, expr.cln, expr.nm=NULL, cln.print) {
     ## expr.cln     column of the gene expression table to include
     ## expr.nm      name of expression stage
     ## cln.print    column to print in the final table
+    ## keep.syn     keep synonymous mutation
 
     cat("QTL tables: processing ", chr, "...\n", sep="")
 
@@ -193,6 +194,9 @@ qtl.tb <- function(x, chr, ann.tb, expr.tb, expr.cln, expr.nm=NULL, cln.print) {
         
         for (i in 1:length(myidx)) {
             ann <- myinfo.ann[[myidx[i]]]
+
+            # Skip synonymous
+            if (! keep.syn & grepl("synonymous_variant", ann[2])) { next }
             
             mycln.tmp <- seq(0, by=15, length.out=round(length(ann)/15))
             
@@ -445,13 +449,14 @@ qtl.tb.sum <- function(x, ann.tb, expr.tb, expr.cln, expr.nm=NULL, gff, baits.be
             }
 
 
-            nb.var <- nrow(mytb.tmp)
+            # nb.var <- nrow(mytb.tmp)
 
             # Impact related stat
             mytb.impct <- mytb.tmp[,myimpct.cln]
             for (i in 1:nrow(myimpct.tb)) { mytb.impct[ mytb.impct == myimpct.tb[i,1] ] <- myimpct.tb[i,2] }
             myimpct.vec <- na.omit(as.numeric(unlist((mytb.impct))))
             myimpct.sc  <- sum(myimpct.vec)
+            nb.var      <- ((! is.na(mytb.impct)) %>% rowSums() > 0) %>% sum()
             myimpct.sc2 <- round(sum(myimpct.vec) / ((length(myimpct.vec) / nb.var)), digits=1)
 
             # LOD related stat
@@ -468,7 +473,7 @@ qtl.tb.sum <- function(x, ann.tb, expr.tb, expr.cln, expr.nm=NULL, gff, baits.be
             mytb.sc[mytb.sc == 0] <- 1
             mytb.sc <- mytb.sc[, 1] * mytb.sc[, 2]
             mytb.sc[mytb.sc == 1] <- 0
-            myimpct.vec <- apply(mytb.impct, 1, function(x) max(x, na.rm=TRUE)) %>% as.numeric()
+            myimpct.vec <- apply(mytb.impct, 1, function(x) if (all(is.na(x))) { 0 } else { max(x, na.rm = TRUE)} ) %>% as.numeric()
             mytb.sc <- mytb.sc * myimpct.vec
             mygb.sc <- sum(mytb.sc) / (diff(unlist(mypos)) * sqrt(mylod.dist)) * 100
             if (sum(as.numeric(mytb.tmp[1, 8:(7+k)])) == 0) { mygb.sc <- -mygb.sc }
@@ -517,7 +522,7 @@ qtl.tb.sum <- function(x, ann.tb, expr.tb, expr.cln, expr.nm=NULL, gff, baits.be
                     mytb.sc[mytb.sc == 0] <- 1
                     mytb.sc <- mytb.sc[, 1] * mytb.sc[, 2]
                     mytb.sc[mytb.sc == 1] <- 0
-                    myimpct.vec <- apply(mytb.impct, 1, function(x) max(x, na.rm=TRUE)) %>% as.numeric()
+                    myimpct.vec <- apply(mytb.impct, 1, function(x) if (all(is.na(x))) { 0 } else { max(x, na.rm = TRUE)} ) %>% as.numeric()
                     mytb.sc <- mytb.sc * myimpct.vec
                     mygb.cds.sc <- sum(mytb.sc) / (cds.length * sqrt(mylod.dist)) * 100
                     if (sum(as.numeric(mytb.tmp[1, 8:(7+k)])) == 0) { mygb.cds.sc <- -mygb.cds.sc }
