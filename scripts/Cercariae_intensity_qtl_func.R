@@ -98,3 +98,44 @@ quality.check <- function(x, est.rf=FALSE) {
         checkAlleles(x)
     }
 }
+
+
+#--------------#
+# Scan-one QTL #
+#--------------#
+
+myscanone <- function(in.qtl, pheno.cln, methods, model, n.perm, n.cluster=NULL, addcovar=NULL, intcovar=NULL) {
+
+    out.ls <- vector("list", length(methods))
+    names(out.ls) <- methods
+
+    for (m in methods) {
+        
+        # Methods used for the QTL analysis
+        if (m == "em") { methods.nm <- "EM" }
+        if (m == "mr") { methods.nm <- "marker regression" }
+
+        cat("\t -Performing ", methods.nm, " analysis and permutation computation (", n.perm, ")...\n", sep="")
+        out <- scanone(in.qtl, pheno.col=pheno.cln, method=m, model=model, addcovar = addcovar, intcovar = intcovar)
+        cat("\t")
+        set.seed(myseed + p + match(i, mycomp.ls) + match(m, methods))
+        out.perm <- scanone(in.qtl, pheno.col=pheno.cln, method=m, model=model, addcovar = addcovar, intcovar = intcovar, n.perm=n.perm, n.cluster = n.cluster, verbose=FALSE)
+        out.trsh <- as.numeric(sort(out.perm)[round(n.perm - n.perm * mylod.trsh)])
+        if(max(out[,3]) < out.trsh) {warning(m, " method: all LOD scores are under LOD threshold.", immediate.=TRUE, call.=FALSE)}
+
+        # Rename positions
+        out[,2] <- unlist(lapply(rownames(out), function(x) rev(strsplit(x,"_")[[1]])[1]))
+
+        # Check for spurious results
+        out <- out[ ! is.na(out[,2]),]
+        if (any(is.infinite(out[,3]))) {
+            warning("Infinite values present. They will be replaced by the maximum value.", immediate.=TRUE, call.=FALSE)
+            out[is.infinite(out[,3]),3] <- max(out[!is.infinite(out[,3]),3])
+        }
+
+        # Store results
+        out.ls[[m]] <- list(lod=out, perm=out.perm, trsh=out.trsh)
+    }
+
+    return(out.ls)
+}

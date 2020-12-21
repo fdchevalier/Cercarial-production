@@ -86,6 +86,9 @@ filename <- basename(myvcf_f) %>% strsplit(., ".vcf.gz")
 # PT data file
 myF2.ptf <- paste0(data_fd, "phenotyping/F2.csv")
 
+# PT data file
+myF2.sex.f <- paste0(data_fd, "phenotyping/sex")
+
 # Output name of the R/qtl GT table without any filename extension
 myF2.gt <- "F2_geno"
 
@@ -316,9 +319,22 @@ for (i in myF2.list) {
 # List to store QTL and related information
 mycomp.ls <- c(myF2.list,"combination")
 
-# List to store results
-mypheno.qtl.ls  <- vector("list", nrow(mypheno.mt))
+# Sex covariate
+mysex <- read.delim(sex_f, header = FALSE, stringsAsFactors = FALSE)
+mysex <- mysex[grepl("F2", mysex[,1]), ]
+mysex[is.na(mysex[, 3]), 3] <- 0.75
+mysex[mysex[, 3] > 0.7 & mysex[, 3] < 0.9, 4] <- NA
+mysex <- mysex[, c(1,4)]
+mysex[! is.na(mysex[, 2]) & mysex[, 2 ] == "female", 2] <- 0    # Coding sex as recommended per the book
+mysex[! is.na(mysex[, 2]) &mysex[, 2 ] == "male", 2]   <- 1      # Coding sex as recommended per the book
+mysex[, 2] <- as.numeric(mysex[, 2])
+mysex <- merge(pull.pheno(mydata.qtl), mysex, by = 1, all = TRUE)
+mysex <- mysex[, ncol(mysex), drop = FALSE]
+
+# Lists to store results
+mypheno.qtl.ls  <- vector("list", nrow(mypheno.mt)) ## For simple scanone
 names(mypheno.qtl.ls) <- mypheno.mt[,2]
+mypheno.qtl.ls.ac <- mypheno.qtl.ls ## For scanone with covariate
 
 # Analyze all phenotypes
 for (p in 1:nrow(mypheno.mt)) {
@@ -341,6 +357,8 @@ for (p in 1:nrow(mypheno.mt)) {
     myqtl.ls  <- vector("list", length(mycomp.ls))
     names(myqtl.ls) <- mycomp.ls
 
+    myqtl.ls.ac <- myqtl.ls
+
     for (i in mycomp.ls) {
         cat(paste(" --Cross",i,"\n"))
 
@@ -348,9 +366,11 @@ for (p in 1:nrow(mypheno.mt)) {
         if (i != "combination") {
             in.qtl <- subset(mydata.qtl, ind=(pull.pheno(mydata.qtl, cross.cln) == i))
             in.qtl <- drop.markers(in.qtl, myuninfo.mrkr[[i]])
+            mysex.tmp <- mysex[ pull.pheno(mydata.qtl)[, 2] == i, , drop = FALSE ]
         } else {
             mylist.mkr <- myuninfo.mrkr %>% unlist() %>% unique()
             in.qtl     <- drop.markers(mydata.qtl, mylist.mkr)
+            mysex.tmp  <- mysex
         }
 
         # Genotype probability calculation (needed for some analysis)
@@ -362,44 +382,22 @@ for (p in 1:nrow(mypheno.mt)) {
         # Scan for QTL #
         #~~~~~~~~~~~~~~#
 
-        out.ls <- vector("list", length(mymethods))
-        names(out.ls) <- mymethods
-
-        for (m in mymethods) {
-            cat("\t -Performing ", mymethods.nm[mymethods %in% m], " analysis and permutation computation (", my.n.perm, ")...\n", sep="")
-            out <- scanone(in.qtl, pheno.col=pheno.cln, method=m, model=mymodel)
-            cat("\t")
-            set.seed(myseed + p + match(i, mycomp.ls) + match(m, mymethods))
-            out.perm <- scanone(in.qtl, pheno.col=pheno.cln, method=m, model=mymodel, n.perm=my.n.perm, n.cluster = n.cluster, verbose=FALSE)
-            out.trsh <- as.numeric(sort(out.perm)[round(my.n.perm-my.n.perm*mylod.trsh)])
-            if(max(out[,3]) < out.trsh) {warning(m, " method: all LOD scores are under LOD threshold.", immediate.=TRUE, call.=FALSE)}
-
-            # Rename positions
-            out[,2] <- unlist(lapply(rownames(out), function(x) rev(strsplit(x,"_")[[1]])[1]))
-
-            # Check for spurious results
-            out <- out[ ! is.na(out[,2]),]
-            if (any(is.infinite(out[,3]))) {
-                warning("Infinite values present. They will be replaced by the maximum value.", immediate.=TRUE, call.=FALSE)
-                out[is.infinite(out[,3]),3] <- max(out[!is.infinite(out[,3]),3])
-            }
-
-            # Store results
-            out.ls[[m]] <- list(lod=out, perm=out.perm, trsh=out.trsh)
-        }
-
-        # Creating QTL object
-        myqtl.ls[[i]]          <- out.ls
+        myqtl.ls[[i]]          <- myscanone(in.qtl, pheno.cln, mymethods, mymodel, my.n.perm, n.cluster)
         myqtl.ls[[i]]$genoprob <- in.qtl
+        
+        myqtl.ls.ac[[i]]          <- myscanone(in.qtl, pheno.cln, mymethods, mymodel, my.n.perm, n.cluster, addcovar=mysex.tmp)
+        myqtl.ls.ac[[i]]$genoprob <- in.qtl
     }
 
     # Store in the designated slot
     mypheno.qtl.ls[[mypheno.mt[p,2]]] <- myqtl.ls
+    mypheno.qtl.ls.ac[[mypheno.mt[p,2]]] <- myqtl.ls.ac
 
 }
 
 # Save QTL analysis for other scripts to use
 save(mypheno.qtl.ls, file = paste0(result_fd, "mypheno.qtl.ls.RData"))
+save(mypheno.qtl.ac.ls, file = paste0(result_fd, "mypheno.qtl.ls.ac.RData"))
 
 # QTL identification
 for (p in 1:nrow(mypheno.mt)) {
