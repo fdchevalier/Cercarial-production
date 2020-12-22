@@ -168,9 +168,9 @@ mypheno.mt <- matrix(c(
 #---------------#
 
 if (mymissing.data < 0 | mymissing.data >= 1) { stop("mymissing.data must be in [0;1[") }
-if (! any(grepl(pheno.cln, mypheno.mt[,1]))) {stop("The pheno.cln value is unknown in mypheno.mt table.", call.=FALSE)}
+# if (! any(grepl(pheno.cln, mypheno.mt[,1]))) {stop("The pheno.cln value is unknown in mypheno.mt table.", call.=FALSE)}
 
-if (! dir.exists(result_fd)) { dir.create(result_fd, recursive = TRUE)
+if (! dir.exists(result_fd)) { dir.create(result_fd, recursive = TRUE) }
 
 #--------------#
 # Data Loading #
@@ -320,7 +320,7 @@ for (i in myF2.list) {
 mycomp.ls <- c(myF2.list,"combination")
 
 # Sex covariate
-mysex <- read.delim(sex_f, header = FALSE, stringsAsFactors = FALSE)
+mysex <- read.delim(myF2.sex.f, header = FALSE, stringsAsFactors = FALSE)
 mysex <- mysex[grepl("F2", mysex[,1]), ]
 mysex[is.na(mysex[, 3]), 3] <- 0.75
 mysex[mysex[, 3] > 0.7 & mysex[, 3] < 0.9, 4] <- NA
@@ -397,7 +397,7 @@ for (p in 1:nrow(mypheno.mt)) {
 
 # Save QTL analysis for other scripts to use
 save(mypheno.qtl.ls, file = paste0(result_fd, "mypheno.qtl.ls.RData"))
-save(mypheno.qtl.ac.ls, file = paste0(result_fd, "mypheno.qtl.ls.ac.RData"))
+save(mypheno.qtl.ls.ac, file = paste0(result_fd, "mypheno.qtl.ls.ac.RData"))
 
 # QTL identification
 for (p in 1:nrow(mypheno.mt)) {
@@ -691,7 +691,7 @@ for (i in mycomp.ls) {
 
 # Separate LOD scores for separate shedding time points
 myrow <- 4
-pdf(paste0(graph_fd,g.prefix,"panel_weeks.pdf"), width=10, height=4*myrow)
+pdf(paste0(graph_fd,"shedding_panel_weeks.pdf"), width=10, height=4*myrow)
 
 par(mar=c(5,4.5,3,1.5) + 0.1)
 
@@ -722,7 +722,7 @@ for (p in 1:nrow(mypheno.mt[1:4,])) {
             mylod <- mylod[! grepl("loc", mylod[,2]), ]
             mylod[,2] <- as.numeric(mylod[,2])
 
-            matplot.data(mylod, 3, datatype="freq", ylab="LOD score", ylim.min=0, ylim.max=my.ylim, data.order=TRUE, by.pos=TRUE)
+            matplot.data(mylod, 3, datatype="freq", ylab="LOD score", ylim.min=0, ylim.max=my.ylim, abline.h=myqtl.data$trsh, data.order=TRUE, by.pos=TRUE)
             mtext(paste0(LETTERS[p], "."), side=3, line=0.75, at=line2user(par("mar")[2],2), cex=par("cex")*2.5, adj=0)
             title(paste("Shedding", p), cex.main=par("cex")*3)
         }
