@@ -179,7 +179,7 @@ axis(2, tcl=-0.5)
 y.pos <- par("usr")[4]+par("usr")[4]*0.05
 
 # Add statistical analysis on the plot
-text(c(1,2), c(max(mydataF0[,8], na.rm=TRUE)+250, max(mydataF0[,8],na.rm=TRUE)+250), c("a","d"), xpd=TRUE,cex=1.5)
+text(c(1,2), c(max(dataBRE[,8], na.rm=TRUE)+250, max(dataLE[,8],na.rm=TRUE)+250), c("a","d"), xpd=TRUE,cex=1.5)
 
 # Add letters on the panel
 mtext("A.", side=3, line=0.5, at=line2user(3,2), cex=par("cex")*2, adj=1)

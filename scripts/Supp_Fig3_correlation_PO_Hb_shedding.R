@@ -124,7 +124,10 @@ legend("center",c("F1A", "F1B", "F2A", "F2B"),pch=c(21,21,24,24), col="black", p
 
 par(mar=c(5,3,3,1))
 
-plot(F2$PO, F2$average, axes=F, xlab="Total laccase activity", ylab="", main="F2", ylim=c(0,4000), xlim=c(1,3), cex.main=2, cex.lab=1.3,  frame.plot=FALSE, bg=ifelse(F2$cross=="F2A", "gray50", "white"), pch=ifelse(F2$cross=="F2B", 24, 24), xpd=TRUE)
+ylim <- c(0,max(F2$average))
+xlim <- c(1,max(F2$PO, na.rm=T))
+
+plot(F2$PO, F2$average, axes=F, xlab="Total laccase activity", ylab="", main="F2", ylim=ylim, xlim=xlim, cex.main=2, cex.lab=1.3,  frame.plot=FALSE, bg=ifelse(F2$cross=="F2A", "gray50", "white"), pch=ifelse(F2$cross=="F2B", 24, 24), xpd=TRUE)
 
 #---Axis definition---#
 axis(1, cex.axis=1, las=1)
@@ -135,7 +138,7 @@ myreg <- lm(average~PO, data=F2)
 abline(myreg, col="red", lty=2)
 
 #---Add statistical analysis on the plot---#
-text(2.5,4000, expression(italic("Pearson's r= -0.56; p < 0.0001")), cex=1, xpd=TRUE) 
+text(2.5,4200, expression(italic("Pearson's r= -0.56; p < 0.0001")), cex=1, xpd=TRUE) 
 
 #---Add letters on the figure panel---#
 mtext("D.", side=3, line=0.5, at=line2user(3,2), cex=par("cex")*2, adj=1)
@@ -145,7 +148,10 @@ mtext("D.", side=3, line=0.5, at=line2user(3,2), cex=par("cex")*2, adj=1)
 
 par(mar=c(5,3,3,1))
 
-plot(F2$Hb, F2$average, xlab="Hemoglobin rate", ylab="",axes=F, cex.lab=1.3, ylim=c(0,4000), xlim=c(0,3), frame.plot=FALSE, bg=ifelse(F2$cross=="F2A", "gray50", "white"), pch=ifelse(F2$cross=="F2B", 24, 24), xpd=TRUE)
+ylim <- c(0,max(F2$average))
+xlim <- c(0,max(F2$Hb, na.rm=T))
+
+plot(F2$Hb, F2$average, xlab="Hemoglobin rate", ylab="",axes=F, cex.lab=1.3, ylim=ylim, xlim=xlim, frame.plot=FALSE, bg=ifelse(F2$cross=="F2A", "gray50", "white"), pch=ifelse(F2$cross=="F2B", 24, 24), xpd=TRUE)
 
 
 #---Axis definition---#
@@ -157,7 +163,7 @@ myreg <- lm(average~Hb, data=F2)
 abline(myreg, col="red", lty=2)
 
 #---Add statistical analysis on the plot---#
-text(2,4000, expression(italic("Pearson's r= -0.50; p < 0.0001")), cex=1, xpd=TRUE)
+text(1.5,4200, expression(italic("Pearson's r= -0.50; p < 0.0001")), cex=1, xpd=TRUE)
 
 #---Add letters on the figure panel---#
 mtext("E.", side=3, line=0.5, at=line2user(3,2), cex=par("cex")*2, adj=1)
@@ -167,7 +173,10 @@ mtext("E.", side=3, line=0.5, at=line2user(3,2), cex=par("cex")*2, adj=1)
 
 par(mar=c(5,3,3,1))
 
-plot(F2$PO, F2$Hb,  xlab="Total laccase activity", ylab="", xlim=c(1,3), ylim=c(0,3), cex.lab=1.3, axes=F, frame.plot=FALSE, bg=ifelse(F2$cross=="F2A", "gray50", "white"), pch=ifelse(F2$cross=="F2B", 24, 24), xpd=TRUE)
+ylim <- c(0,max(F2$Hb, na.rm=T))
+xlim <- c(1,max(F2$PO, na.rm=T))
+
+plot(F2$PO, F2$Hb,  xlab="Total laccase activity", ylab="", xlim=xlim, ylim=ylim, cex.lab=1.3, axes=F, frame.plot=FALSE, bg=ifelse(F2$cross=="F2A", "gray50", "white"), pch=ifelse(F2$cross=="F2B", 24, 24), xpd=TRUE)
 
 
 #---Axis definition---#
@@ -179,7 +188,7 @@ myreg <- lm(Hb~PO, data=F2)
 abline(myreg, col="red", lty=2)
 
 #---Add statistical analysis on the plot---#
-text(2,3, expression(italic("Pearson's r= 0.66; p < 0.0001")), cex=1, xpd=TRUE)
+text(2,2.7, expression(italic("Pearson's r= 0.66; p < 0.0001")), cex=1, xpd=TRUE)
 
 #---Add letters on the figure panel---#
 mtext("F.", side=3, line=0.5, at=line2user(3,2), cex=par("cex")*2, adj=1)

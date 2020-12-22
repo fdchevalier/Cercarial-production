@@ -27,7 +27,7 @@ dataF1Bf <- mydataB[mydataB[,11] == "f",]
 pheno <- read.csv("F2.csv")
 
 b <- read.delim("sex", header=F)
-names(b) <- c("id", "ratio", "ratio2", "sex")
+names(b) <- c("id", "read_depth", "ratio", "sex")
 
 c <- merge(pheno, b ,by = 1)
 
@@ -137,7 +137,7 @@ y.maxs <- c()
 }
 
 y.maxs.grp <- sapply(seq(1, length(y.maxs), length(c.type)), function(x) max(y.maxs[x:(x+length(c.type)-1)]))
-text(1.5, y.maxs.grp*1.1, "NS", xpd=TRUE, cex=1.5)
+text(1.5, y.maxs.grp*1.1, "NS", xpd=TRUE, cex=1)
 
 for (t.id in 1:length(c.type)) {
 	segments(1.10, y.maxs.grp[t.id]*1.03, 1.90)
@@ -164,7 +164,7 @@ y.maxs <- c()
 }
 
 y.maxs.grp <- sapply(seq(1, length(y.maxs), length(c.type)), function(x) max(y.maxs[x:(x+length(c.type)-1)]))
-text(1.5, y.maxs.grp*1.15, "NS", xpd=TRUE, cex=1.5)
+text(1.5, y.maxs.grp*1.15, "NS", xpd=TRUE, cex=1)
 
 for (t.id in 1:length(c.type)) {
 	segments(1.10, y.maxs.grp[t.id]*1.035, 1.90)
