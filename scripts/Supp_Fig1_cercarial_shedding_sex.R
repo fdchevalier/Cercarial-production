@@ -11,9 +11,11 @@
 # Loading packages
 #-------------------
 
-library("gplots")
-library("plotrix")
-library("magrittr")
+suppressMessages({
+    library("gplots")
+    library("plotrix")
+    library("magrittr")
+})
 
 #-----------------------------
 # Loading dataset

@@ -10,14 +10,19 @@
 # Loading packages
 #-------------------
 
-library("gtools")
-library("gplots")
-library("plotrix")
-library("reshape")
+suppressMessages({
+    library("gtools")
+    library("gplots")
+    library("plotrix")
+    library("reshape")
+})
 
 #-----------------------------
 # Loading data
 #-----------------------------
+
+# Suppress warning messages
+options(warn=-1)
 
 # Working directory
 setwd(file.path(getwd(), "scripts"))

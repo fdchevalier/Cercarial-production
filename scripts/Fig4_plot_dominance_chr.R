@@ -11,11 +11,12 @@
 # Loading packages
 #-------------------
 
-
-library("gplots")
-library("plotrix")
-library("magrittr")
-library("multcompView")
+suppressMessages({
+    library("gplots")
+    library("plotrix")
+    library("magrittr")
+    library("multcompView")
+})
 
 #----------------
 # Loading datasets
@@ -29,9 +30,6 @@ graph_fd  <- "../graphs/"
 result_fd <- "../results/1-QTL/"
 
 load(paste0(result_fd, "mygeno.pheno.RData"))
-
-# List all the element of the list
-ls()
 
 # Print the summary of the element of the list
 str(mygeno.pheno)
