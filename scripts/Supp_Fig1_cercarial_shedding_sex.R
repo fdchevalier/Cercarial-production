@@ -1,3 +1,12 @@
+#!/usr/bin/env Rscript
+# Title: Supp_Fig1_cercarial_shedding_sex.R
+# Version: 0.1
+# Author: Winka LE CLEC'H <winkal@txbiomed.org>
+# Created in: 2020-06
+# Modified in: 2020-12-21
+
+
+
 #-------------------
 # Loading packages
 #-------------------

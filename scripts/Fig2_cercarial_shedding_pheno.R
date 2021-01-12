@@ -1,3 +1,11 @@
+#!/usr/bin/env Rscript
+# Title: Fig2_cercarial_shedding_pheno.R
+# Version: 0.1
+# Author: Winka LE CLEC'H <winkal@txbiomed.org>
+# Created in: 2020-03
+# Modified in: 2020-12-21
+
+
 #-------------------
 # Loading packages
 #-------------------

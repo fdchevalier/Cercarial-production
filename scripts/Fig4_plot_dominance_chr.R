@@ -1,7 +1,9 @@
-#--------------
-# Remarques
-#--------------
-
+#!/usr/bin/env Rscript
+# Title: Fig4_plot_dominance_chr.R
+# Version: 0.1
+# Author: Winka LE CLEC'H <winkal@txbiomed.org>
+# Created in: 2020-03
+# Modified in: 2020-12-17
 
 
 
