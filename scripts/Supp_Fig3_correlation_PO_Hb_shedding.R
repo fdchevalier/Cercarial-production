@@ -9,8 +9,15 @@ library("plotrix")
 # Loading dataset
 #-----------------------------
 
-F1 <-read.table("F1.csv", header = TRUE, sep = ",", dec = ".", na.strings = "NA")
-F2 <-read.table("F2.csv", header = TRUE, sep = ",", dec = ".", na.strings = "NA")
+# Working directory
+setwd(file.path(getwd(), "scripts"))
+
+# Folders
+data_fd   <- "../data/"
+graph_fd  <- "../graphs/"
+
+F1 <-read.table(paste0(data_fd, "phenotyping/F1.csv"), header = TRUE, sep = ",", dec = ".", na.strings = "NA")
+F2 <-read.table(paste0(data_fd, "phenotyping/F2.csv"), header = TRUE, sep = ",", dec = ".", na.strings = "NA")
 
 
 #===========#
@@ -41,7 +48,9 @@ line2user <- function(line, side) {
 # Figures
 #---------
 
-pdf(file="Supplementary_Figure3.pdf", width=6, height=8, useDingbats=FALSE)
+if (! dir.exists(graph_fd)) { dir.create(graph_fd, recursive = TRUE) }
+
+pdf(file=paste0(graph_fd, "Supplementary_Figure3.pdf"), width=6, height=8, useDingbats=FALSE)
 
 layout(matrix(c(1,2,3,4,5,6,7,4),4,2), heights = c(0.5,0.5,0.5,0.1))
 

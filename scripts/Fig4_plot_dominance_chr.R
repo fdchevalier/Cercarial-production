@@ -19,7 +19,14 @@ library("multcompView")
 # Loading datasets
 #----------------
 
-load("mygeno.pheno.RData")
+# Working directory
+setwd(file.path(getwd(), "scripts"))
+
+# Folders
+graph_fd  <- "../graphs/"
+result_fd <- "../results/1-QTL/"
+
+load(paste0(result_fd, "mygeno.pheno.RData"))
 
 # List all the element of the list
 ls()
@@ -90,9 +97,10 @@ for (i in 1:length(mygeno.pheno)) {
 # Figures
 #---------
 
+if (! dir.exists(graph_fd)) { dir.create(graph_fd, recursive = TRUE) }
 
 #pdf(file="Figure 4_plot.pdf", width=9, height=6)
-pdf(file="Figure 4_barplot.pdf", width=9, height=6)
+pdf(file=paste0(graph_fd, "Figure 4_barplot.pdf"), width=9, height=6)
 
 mymean <- mytable[,3]
 myse <- mytable[,4]

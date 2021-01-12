@@ -10,7 +10,14 @@ library("magrittr")
 # Loading dataset
 #-----------------------------
 
-mydataF1 <- read.table("F1.csv", header = TRUE, sep = ",", dec = ".", na.strings = "NA")
+# Working directory
+setwd(file.path(getwd(), "scripts"))
+
+# Folders
+data_fd   <- "../data/"
+graph_fd  <- "../graphs/"
+
+mydataF1 <- read.table(paste0(data_fd, "phenotyping/F1.csv"), header = TRUE, sep = ",", dec = ".", na.strings = "NA")
 
 #---------F1 progeny----------#
 mydataA <- mydataF1[mydataF1[,2] == "F1A",]
@@ -24,16 +31,16 @@ dataF1Bf <- mydataB[mydataB[,11] == "f",]
 
 #---------F2 progeny----------#
 
-pheno <- read.csv("F2.csv")
+pheno <- read.csv(paste0(data_fd, "phenotyping/F2.csv"))
 
-b <- read.delim("sex", header=F)
+b <- read.table(paste0(data_fd, "phenotyping/sex.tsv"), header = TRUE, stringsAsFactors = FALSE)
 names(b) <- c("id", "read_depth", "ratio", "sex")
 
 c <- merge(pheno, b ,by = 1)
 
 # Mask uncertain sexing
 c <- c[! is.na(c[, "sex"]), ]
-c <- c[! (c[,"ratio2"] > 0.7 & c[,"ratio2"] < 0.9), ]
+c <- c[! (c[,"ratio"] > 0.7 & c[,"ratio"] < 0.9), ]
 
 cA <- c[ c[,2] == "F2A", ]
 cB <- c[ c[,2] == "F2B", ]
@@ -88,8 +95,9 @@ shifts <- c(-0.2,0.2)
 # Figures
 #---------
 
+if (! dir.exists(graph_fd)) { dir.create(graph_fd, recursive = TRUE) }
 
-pdf(file="Supplementary_Figure1.pdf", width=6, height=6)
+pdf(file=paste0(graph_fd, "Supplementary_Figure1.pdf"), width=6, height=6)
 
 layout(matrix(c(1,2,3,4),2,2))
 

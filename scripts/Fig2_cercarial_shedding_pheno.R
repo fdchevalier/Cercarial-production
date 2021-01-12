@@ -11,9 +11,16 @@ library("reshape")
 # Loading data
 #-----------------------------
 
-mydataF0 <-read.csv("F0_parental_populations.csv", header = TRUE, sep = ",", dec = ".", na.strings = "NA")
-mydataF1 <-read.csv("F1.csv", header = TRUE, sep = ",", dec = ".", na.strings = "NA")
-mydataF2 <-read.csv("F2.csv", header = TRUE, sep = ",", dec = ".", na.strings = "NA")
+# Working directory
+setwd(file.path(getwd(), "scripts"))
+
+# Folders
+data_fd   <- "../data/"
+graph_fd  <- "../graphs/"
+
+mydataF0 <-read.csv(paste0(data_fd, "phenotyping/F0_parental_populations.csv"), header = TRUE, sep = ",", dec = ".", na.strings = "NA")
+mydataF1 <-read.csv(paste0(data_fd, "phenotyping/F1.csv"), header = TRUE, sep = ",", dec = ".", na.strings = "NA")
+mydataF2 <-read.csv(paste0(data_fd, "phenotyping/F2.csv"), header = TRUE, sep = ",", dec = ".", na.strings = "NA")
 
 
 #===========#
@@ -162,8 +169,9 @@ myseg <- matrix(c(1,2,
 # Figures
 #---------
 
+if (! dir.exists(graph_fd)) { dir.create(graph_fd, recursive = TRUE) }
 
-pdf(file="Figure2.pdf", width=15, height=15)
+pdf(file=paste0(graph_fd, "Figure2.pdf"), width=15, height=15)
 
 layout(matrix(c(1,2,3,4,5,6,3,4,7,8,3,4),4,3), heights = c(0.5,0.5,0.5,0.5), widths= c(0.35,0.35,0.35))
 
