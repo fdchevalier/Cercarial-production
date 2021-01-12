@@ -87,7 +87,7 @@ filename <- basename(myvcf_f) %>% strsplit(., ".vcf.gz")
 myF2.ptf <- paste0(data_fd, "phenotyping/F2.csv")
 
 # PT data file
-myF2.sex.f <- paste0(data_fd, "phenotyping/sex")
+myF2.sex.f <- paste0(data_fd, "phenotyping/sex.tsv")
 
 # Output name of the R/qtl GT table without any filename extension
 myF2.gt <- "F2_geno"
@@ -320,7 +320,7 @@ for (i in myF2.list) {
 mycomp.ls <- c(myF2.list,"combination")
 
 # Sex covariate
-mysex <- read.delim(myF2.sex.f, header = FALSE, stringsAsFactors = FALSE)
+mysex <- read.table(myF2.sex.f, header = TRUE, stringsAsFactors = FALSE)
 mysex <- mysex[grepl("F2", mysex[,1]), ]
 mysex[is.na(mysex[, 3]), 3] <- 0.75
 mysex[mysex[, 3] > 0.7 & mysex[, 3] < 0.9, 4] <- NA
