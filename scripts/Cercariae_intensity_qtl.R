@@ -51,13 +51,13 @@ library("multcompView")	# For multcompLetters
 # External functions #
 #--------------------#
 
-source("Cercariae_intensity_qtl_func.R")
+source("functions/Cercariae_intensity_qtl_func.R")
 
 # Function specific to R/qtl
-source("gt2rqtl.R")
+source("functions/gt2rqtl.R")
 
 # Function to plot data on exome
-source("Sm.matplot.data.R")
+source("functions/Sm.matplot.data.R")
 
 
 

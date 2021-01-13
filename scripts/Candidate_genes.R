@@ -45,7 +45,7 @@ library("rtracklayer")
 # Working directory
 #setwd(file.path(getwd(), "scripts"))
 
-source("Candidate_genes_func.R")
+source("functions/Candidate_genes_func.R")
 
 
 #===========#
