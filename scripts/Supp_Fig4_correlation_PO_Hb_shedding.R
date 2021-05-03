@@ -61,7 +61,7 @@ line2user <- function(line, side) {
 
 if (! dir.exists(graph_fd)) { dir.create(graph_fd, recursive = TRUE) }
 
-pdf(file=paste0(graph_fd, "Supplementary_Figure3.pdf"), width=6, height=8, useDingbats=FALSE)
+pdf(file=paste0(graph_fd, "Supplementary_Figure4.pdf"), width=6, height=8, useDingbats=FALSE)
 
 layout(matrix(c(1,2,3,4,5,6,7,4),4,2), heights = c(0.5,0.5,0.5,0.1))
 
