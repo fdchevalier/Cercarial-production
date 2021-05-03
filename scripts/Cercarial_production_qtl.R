@@ -1,9 +1,9 @@
 #!/usr/bin/env Rscript
-# Title: Cercaire_intensity_qtl.R
-# Version: 0.2
+# Title: Cercarial_production_qtl.R
+# Version: 0.3
 # Author: Frédéric CHEVALIER <fcheval@txbiomed.org>, Winka LE CLEC'H <winkal@txbiomed.org>
 # Created in: 2016-02-18
-# Modified in: 2016-07-15
+# Modified in: 2021-05-03
 
 
 
@@ -11,8 +11,7 @@
 # Comments #
 #==========#
 
-# Transform GT table from vcftools to R/qtl csvr table
-# Derived from Chronobio_qtl.R
+# Test the presence of QTL related to production of cercariae in Schistosoma mansoni parasites.
 
 
 
@@ -20,6 +19,7 @@
 # Versions #
 #==========#
 
+# v0.3 - 2021-05-03: script renamed and code reshaped
 # v0.2 - 2016-07-15: missing data bug correction
 # v0.1 - 2016-05-18: combined analysis included
 # v0.0 - 2016-02-18: creation
@@ -30,11 +30,15 @@
 # Packages required #
 #===================#
 
-library("qtl")      # For R/qtl commands
-library("vcfR")
-library("magrittr")
-library("snow")     # For parallel permutations
-library("multcompView")	# For multcompLetters
+cat("Loading packages...\n")
+
+suppressMessages({
+    library("qtl")          # For R/qtl commands
+    library("vcfR")
+    library("magrittr")
+    library("snow")         # For parallel permutations
+    library("multcompView")	# For multcompLetters
+})
 
 
 
@@ -43,15 +47,13 @@ library("multcompView")	# For multcompLetters
 #===========#
 
 # Working directory
-#setwd(file.path(getwd(), "scripts"))
-
-
+setwd(file.path(getwd(), "scripts"))
 
 #--------------------#
 # External functions #
 #--------------------#
 
-source("functions/Cercariae_intensity_qtl_func.R")
+source("functions/Cercarial_production_qtl_func.R")
 
 # Function specific to R/qtl
 source("functions/gt2rqtl.R")
@@ -65,10 +67,12 @@ source("functions/Sm.matplot.data.R")
 # Variables #
 #===========#
 
+cat("Setting variables...\n")
+
 # Folders
 data_fd   <- "../data/"
 graph_fd  <- "../graphs/"
-result_fd <- "../results/1-QTL/"
+result_fd <- "../results/2-QTL/"
 
 myvcf_f <- paste0(data_fd, "calling/cerc_prod_snpEff_reduced.vcf.gz")
 
@@ -101,12 +105,12 @@ myseed <- 1582
 #-----------------#
 
 # F2A variables
-mypA <- c("SmBRE4_m", "SmLE19_f")   # Be careful at the order of the parents (cf. Allele code below)
+mypA  <- c("SmBRE4_m", "SmLE19_f")   # Be careful at the order of the parents (cf. Allele code below)
 myF1A <- c("F1A")
 myF2A <- c("F2A")
 
 #mypB <- c("SmLE15_m", "SmBRE2_f")
-mypB <- c("SmBRE2_f", "SmLE15_m")   # Be careful at the order of the parents (cf. Allele code below)
+mypB  <- c("SmBRE2_f", "SmLE15_m")   # Be careful at the order of the parents (cf. Allele code below)
 myF1B <- c("F1B")
 myF2B <- c("F2B")
 
@@ -116,7 +120,7 @@ myF2.list <- c("F2A", "F2B")
 ## Assign NULL to skip to the variable to skip the corresponding filtering step
 gq.trsh <- 30
 rd.trsh <- 10
-# mymis.data must be in [0;1[
+## mymissing.data must be in [0;1[
 mymissing.data <- 0.2
 
 na.string <- NA # Could be "./."
@@ -158,7 +162,6 @@ mypheno.mt <- matrix(c(
 
 
 
-
 #=================#
 # Data processing #
 #=================#
@@ -172,9 +175,12 @@ if (mymissing.data < 0 | mymissing.data >= 1) { stop("mymissing.data must be in 
 
 if (! dir.exists(result_fd)) { dir.create(result_fd, recursive = TRUE) }
 
+
 #--------------#
 # Data Loading #
 #--------------#
+
+cat("Loading data...\n")
 
 myvcf <- read.vcfR(myvcf_f)
 
@@ -212,7 +218,8 @@ mydata <- lapply(mydata, function(x) x[! myvec, ])
 #-----------------------------#
 # Data filtering on DP and GQ #
 #-----------------------------#
-cat("\nFiltering data based on GQ and DP...\n")
+
+cat("Filtering data based on GQ and DP...\n")
 
 # Converting data in numeric
 cat("\t- Initial number of alleles before filtering in F2A and F2B:", nrow(mydata$GT), "\n")
@@ -268,6 +275,7 @@ if (! is.null(gq.trsh) | ! is.null(rd.trsh)) {
 #----------------------------------#
 # Conversion of GQ in R/qtl format #
 #----------------------------------#
+
 cat("\nConverting GQ table in R/qtl format...\n")
 
 # File name
@@ -275,15 +283,15 @@ myF2.gt <- paste0(result_fd, myF2.gt, myflt.suffix)
 
 
 # Column associated with name
-mypA <- sapply(mypA, function(x) grep(x, colnames(mydata$GT)))
+mypA  <- sapply(mypA, function(x) grep(x, colnames(mydata$GT)))
 myF1A <- grep(myF1A, colnames(mydata$GT))
 myF2A <- grep(myF2A, colnames(mydata$GT))
 
-mypB <- sapply(mypB, function(x) grep(x, colnames(mydata$GT)))
+mypB  <- sapply(mypB, function(x) grep(x, colnames(mydata$GT)))
 myF1B <- grep(myF1B, colnames(mydata$GT))
 myF2B <- grep(myF2B, colnames(mydata$GT))
 
-myp <- list(mypA, mypB)
+myp  <- list(mypA, mypB)
 myF1 <- list(myF1A, myF1B)
 myF2 <- list(myF2A, myF2B)
 
@@ -295,7 +303,8 @@ gt2rqtl(mydata$GT, parents.cln = myp, F1.cln = myF1, F2.cln = myF2, out.fmt = "c
 #-------------------------#
 # Loading data with R/qtl #
 #-------------------------#
-cat("\nLoading cross data with R/qtl...\n")
+
+cat("Loading cross data with R/qtl...\n")
 
 mydata.qtl <- read.cross("csvs", ".", genfile = paste0(myF2.gt, ".csvs"), phefile = myF2.ptf, estimate.map = FALSE, genotypes = c("LL", "HL", "HH"), alleles = my.alleles)
 
@@ -326,7 +335,7 @@ mysex[is.na(mysex[, 3]), 3] <- 0.75
 mysex[mysex[, 3] > 0.7 & mysex[, 3] < 0.9, 4] <- NA
 mysex <- mysex[, c(1,4)]
 mysex[! is.na(mysex[, 2]) & mysex[, 2 ] == "female", 2] <- 0    # Coding sex as recommended per the book
-mysex[! is.na(mysex[, 2]) &mysex[, 2 ] == "male", 2]   <- 1      # Coding sex as recommended per the book
+mysex[! is.na(mysex[, 2]) & mysex[, 2 ] == "male", 2]   <- 1    # Coding sex as recommended per the book
 mysex[, 2] <- as.numeric(mysex[, 2])
 mysex <- merge(pull.pheno(mydata.qtl), mysex, by = 1, all = TRUE)
 mysex <- mysex[, ncol(mysex), drop = FALSE]
@@ -390,7 +399,7 @@ for (p in 1:nrow(mypheno.mt)) {
     }
 
     # Store in the designated slot
-    mypheno.qtl.ls[[mypheno.mt[p,2]]] <- myqtl.ls
+    mypheno.qtl.ls[[mypheno.mt[p,2]]]    <- myqtl.ls
     mypheno.qtl.ls.ac[[mypheno.mt[p,2]]] <- myqtl.ls.ac
 
 }
@@ -401,26 +410,8 @@ save(mypheno.qtl.ls.ac, file = paste0(result_fd, "mypheno.qtl.ls.ac.RData"))
 
 # QTL identification
 for (p in 1:nrow(mypheno.mt)) {
-    # mypeaks    <- summary(mypheno.qtl.ls[[3]][["em"]]$lod, perm=mypheno.qtl.ls[[3]][["em"]]$perm, alpha=mylod.trsh, pvalues=TRUE)
-    # myqtl.mrkr <- rownames(mypeaks[grep("_[0-9ZW]$", mypeaks[,1], perl=TRUE), ])
-    # myqtl.nb <- length(myqtl.mrkr)
     summary(mypheno.qtl.ls[[p]][[3]][["em"]]$lod, perm=mypheno.qtl.ls[[p]][[3]][["em"]]$perm, alpha=mylod.trsh, pvalues=TRUE) %>% print()
 }
-
-
-# # Genotypes at QTL peaks
-# mygeno.tb <- pull.geno(myqtl.ls[[3]]$genoprob)
-# myAF.pheno <- data.frame( 
-#                 "pheno" = pull.pheno(mydata.qtl.combination)[,pheno.cln],
-#                 "AF" = rowSums(mygeno.tb[ , grep(paste(myqtl.mrkr, collapse="|"), colnames(mygeno.tb)) ]) - myqtl.nb   # Normalized number of "alternative" alleles regarding the number of QTLs
-#                 )
-
-# # Exporting data
-# for (i in mycomp.ls) {
-#     for (j in unique(mymethods)) {
-#         write.table(get(paste(i,j,sep=".")), paste0("tables/",i,".",j,".tsv"), row.names=FALSE, quote=FALSE, sep="\t")
-#     }
-# }
 
 
 #---------------------------#
@@ -474,7 +465,6 @@ if (length(myrow.nm) != nb.markers) {warning(length(myrow.nm), " markers have be
 genoprob      <- myqtl.ls[["combination"]][["genoprob"]]
 myqtl.reduced <- pull.markers(genoprob, myrow.nm)
 
-
 #~~~~~~~~~~~~~~~~~~~#
 # Test interactions #
 #~~~~~~~~~~~~~~~~~~~#
@@ -486,7 +476,6 @@ mychr.o <- names(myqtl.reduced$geno) %>% grep("_[0-9]$|W$", ., value=TRUE) %>% s
 mychr.o <- c(names(myqtl.reduced$geno)[mychr.o], names(myqtl.reduced$geno)[-mychr.o])
 ## Reorder
 myqtl.reduced$geno <- myqtl.reduced$geno[mychr.o]
-
 
 # Compute first interaction
 myqtl.reduced <- calc.genoprob(myqtl.reduced)
@@ -516,12 +505,9 @@ thres_vec <- thres[1,]
 ## QTL interaction/additive effect summary table (complement to heatmap)
 summary(myqtl.i, thresholds = as.numeric(thres_vec[1:5]))
 
-
 # Chromosomes of interest
-mychr <- summary(myqtl.i, thresholds = as.numeric(thres_vec[1:5])) %>% as.data.frame() %>% .[,1:2] %>% unlist() %>% unique() %>% as.vector() %>% sort()
-
-myqtl.tb <- summary(myqtl.ls[["combination"]][["em"]]$lod, perm=myqtl.ls[["combination"]][["em"]]$perm)
-
+mychr      <- summary(myqtl.i, thresholds = as.numeric(thres_vec[1:5])) %>% as.data.frame() %>% .[,1:2] %>% unlist() %>% unique() %>% as.vector() %>% sort()
+myqtl.tb   <- summary(myqtl.ls[["combination"]][["em"]]$lod, perm=myqtl.ls[["combination"]][["em"]]$perm)
 myqtl.mrkr <- myqtl.tb[ myqtl.tb[,1] %in% paste0("SM_V7_",mychr), ]
 
 # Reorder markers
@@ -530,7 +516,6 @@ myqtl.mrkr     <- myqtl.mrkr[ order(myqtl.mrkr[,1]), ]
 
 mygeno.sim <- sim.geno(myqtl.ls[[3]]$genoprob, n.draw=500)
 
-# mypeak <- summary(myqtl.ls[[3]]$em$lod, threshold=2.5) # Why this threshold
 mypos  <- sapply(rownames(myqtl.mrkr), function(x) find.markerpos(mygeno.sim, x)) %>% .[2,] %>% unlist()
 
 myqtl.imp <- makeqtl(mygeno.sim, chr=myqtl.mrkr[,1], pos=mypos)
@@ -581,18 +566,12 @@ for (i in 1:length(mygeno.pheno)) {
 }
 
 
-# Interesting link for boxplot and bar+star: https://stat.ethz.ch/pipermail/r-help/2008-July/166918.html
-
 
 #=========#
 # Figures #
 #=========#
 
-cat("\nDrawing graphs...\n")
-
-# hist(apply(mydata.gt[,grepl("F2A", colnames(mydata.gt))], 1, function(y) {length(grep("./.",y,fixed=T))}))
-#boxplot(mydata.gq[,3:ncol(mydata.gq)])
-#boxplot(mydata.dp[,3:ncol(mydata.dp)])
+cat("Generating graphs...\n")
 
 if (dir.exists(graph_fd) == FALSE) {dir.create(graph_fd)}
 
@@ -742,23 +721,15 @@ pdf(paste0(graph_fd,"scantwo_plot.pdf"), useDingbats = FALSE)
     plot(myqtl.i, chr=chr.o, lower="int", upper="add", col.scheme="viridis")
 dev.off()
 
-
 # Effect plot
 pdf(paste0(graph_fd,"effect_plot.pdf"), width = 15, useDingbats = FALSE)
 layout(matrix(1:5), nrow=1)
 
+# Phenotype against genotype
 for (m in 1:nrow(myqtl.mrkr)) {
-    a <- list(a, effectplot(myqtl.ls[["combination"]]$genoprob, pheno.col=mypheno.cln, rownames(myqtl.mrkr[m,]), draw=FALSE)
+    a <- list(a, effectplot(myqtl.ls[["combination"]]$genoprob, pheno.col=mypheno.cln, rownames(myqtl.mrkr[m,]), draw=FALSE))
 }
 dev.off()
-
-
-
-# Phenotype regarding proportion of alleles from QTLs
-pdf(paste0(graph_fd,"pheno-AF.pdf"), useDingbats=FALSE)
-boxplot(myAF.pheno[,1] ~ myAF.pheno[,2], ylab="Sum of cercariae shed", xlab="Number of high shedder alleles at QTLs", frame=FALSE)
-dev.off()
-
 
 pdf(paste0(graph_fd,"pheno-AF.pdf"), width = 15, useDingbats = FALSE)
 plotPXG(mydata.qtl, marker=myqtl.mrkr, pheno.col = pheno.cln)
