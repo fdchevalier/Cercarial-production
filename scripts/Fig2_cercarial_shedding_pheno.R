@@ -1,9 +1,9 @@
 #!/usr/bin/env Rscript
 # Title: Fig2_cercarial_shedding_pheno.R
-# Version: 0.1
+# Version: 0.2
 # Author: Winka LE CLEC'H <winkal@txbiomed.org>
 # Created in: 2020-03
-# Modified in: 2020-12-21
+# Modified in: 2021-05-05
 
 
 #-------------------
@@ -27,6 +27,9 @@ options(warn=-1)
 # Working directory
 setwd(file.path(getwd(), "scripts"))
 
+# Functions
+source("functions/line2user.R")
+
 # Folders
 data_fd   <- "../data/"
 graph_fd  <- "../graphs/"
@@ -34,25 +37,6 @@ graph_fd  <- "../graphs/"
 mydataF0 <-read.csv(paste0(data_fd, "phenotyping/F0_parental_populations.csv"), header = TRUE, sep = ",", dec = ".", na.strings = "NA")
 mydataF1 <-read.csv(paste0(data_fd, "phenotyping/F1.csv"), header = TRUE, sep = ",", dec = ".", na.strings = "NA")
 mydataF2 <-read.csv(paste0(data_fd, "phenotyping/F2.csv"), header = TRUE, sep = ",", dec = ".", na.strings = "NA")
-
-
-#===========#
-# Functions #
-#===========#
-
-# Line in units
-## source: https://stackoverflow.com/a/30835971
-line2user <- function(line, side) {
-    lh <- par('cin')[2] * par('cex') * par('lheight')
-    x_off <- diff(grconvertX(c(0, lh), 'inches', 'npc'))
-    y_off <- diff(grconvertY(c(0, lh), 'inches', 'npc'))
-    switch(side,
-        `1` = grconvertY(-line * y_off, 'npc', 'user'),
-        `2` = grconvertX(-line * x_off, 'npc', 'user'),
-        `3` = grconvertY(1 + line * y_off, 'npc', 'user'),
-        `4` = grconvertX(1 + line * x_off, 'npc', 'user'),
-        stop("Side must be 1, 2, 3, or 4", call.=FALSE))
-}
 
 
 #------------

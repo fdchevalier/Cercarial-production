@@ -1,9 +1,9 @@
 #!/usr/bin/env Rscript
 # Title: Cercarial_production_qtl.R
-# Version: 0.4
+# Version: 0.5
 # Author: Frédéric CHEVALIER <fcheval@txbiomed.org>, Winka LE CLEC'H <winkal@txbiomed.org>
 # Created in: 2016-02-18
-# Modified in: 2021-05-03
+# Modified in: 2021-05-05
 
 
 
@@ -19,6 +19,7 @@
 # Versions #
 #==========#
 
+# v0.5 - 2021-05-05: add line2user function
 # v0.4 - 2021-05-03: move QTL interaction test in a new script / add missing function / correct typos
 # v0.3 - 2021-05-03: script renamed and code reshaped
 # v0.2 - 2016-07-15: missing data bug correction
@@ -64,6 +65,7 @@ source("functions/rename_chr.R")
 
 # Function to plot data on exome
 source("functions/Sm.matplot.data.R")
+source("functions/line2user.R")
 
 
 

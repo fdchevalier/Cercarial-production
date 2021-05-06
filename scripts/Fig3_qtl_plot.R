@@ -1,3 +1,13 @@
+#!/usr/bin/env Rscript
+# Title: Fig3_qtl_plot.R
+# Version: 0.2
+# Author: Winka LE CLEC'H <winkal@txbiomed.org>
+# Created in: 2020-03
+# Modified in: 2021-05-05
+
+
+# Functions
+source("functions/line2user.R")
 
 myshed <- c(1:4)
 myQTL <- list("", "Chr_5" ,"Chr_3", c("Chr_1", "Chr_2", "Chr_3"))
