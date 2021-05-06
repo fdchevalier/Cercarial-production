@@ -1,9 +1,9 @@
 #!/usr/bin/env Rscript
 # Title: Supp_Fig1_cercarial_shedding_sex.R
-# Version: 0.2
+# Version: 0.3
 # Author: Winka LE CLEC'H <winkal@txbiomed.org>
 # Created in: 2020-06
-# Modified in: 2021-05-05
+# Modified in: 2021-05-06
 
 
 
@@ -31,7 +31,7 @@ source("functions/line2user.R")
 data_fd   <- "../data/"
 graph_fd  <- "../graphs/"
 
-mydataF1 <- read.table(paste0(data_fd, "phenotyping/F1.csv"), header = TRUE, sep = ",", dec = ".", na.strings = "NA")
+mydataF1 <- read.table(paste0(data_fd, "phenotypes/F1.csv"), header = TRUE, sep = ",", dec = ".", na.strings = "NA")
 
 #---------F1 progeny----------#
 mydataA <- mydataF1[mydataF1[,2] == "F1A",]
@@ -45,9 +45,9 @@ dataF1Bf <- mydataB[mydataB[,11] == "f",]
 
 #---------F2 progeny----------#
 
-pheno <- read.csv(paste0(data_fd, "phenotyping/F2.csv"))
+pheno <- read.csv(paste0(data_fd, "phenotypes/F2.csv"))
 
-b <- read.table(paste0(data_fd, "phenotyping/sex.tsv"), header = TRUE, stringsAsFactors = FALSE)
+b <- read.table(paste0(data_fd, "phenotypes/sex.tsv"), header = TRUE, stringsAsFactors = FALSE)
 names(b) <- c("id", "read_depth", "ratio", "sex")
 
 c <- merge(pheno, b ,by = 1)

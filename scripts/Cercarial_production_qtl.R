@@ -1,9 +1,9 @@
 #!/usr/bin/env Rscript
 # Title: Cercarial_production_qtl.R
-# Version: 0.5
+# Version: 0.6
 # Author: Frédéric CHEVALIER <fcheval@txbiomed.org>, Winka LE CLEC'H <winkal@txbiomed.org>
 # Created in: 2016-02-18
-# Modified in: 2021-05-05
+# Modified in: 2021-05-06
 
 
 
@@ -19,6 +19,7 @@
 # Versions #
 #==========#
 
+# v0.6 - 2021-05-06: update path to phenotype files / add genotype variable
 # v0.5 - 2021-05-05: add line2user function
 # v0.4 - 2021-05-03: move QTL interaction test in a new script / add missing function / correct typos
 # v0.3 - 2021-05-03: script renamed and code reshaped
@@ -94,10 +95,10 @@ myfmt <- matrix(c(
 filename <- basename(myvcf_f) %>% strsplit(., ".vcf.gz")
 
 # PT data file
-myF2.ptf <- paste0(data_fd, "phenotyping/F2.csv")
+myF2.ptf <- paste0(data_fd, "phenotypes/F2.csv")
 
 # PT data file
-myF2.sex.f <- paste0(data_fd, "phenotyping/sex.tsv")
+myF2.sex.f <- paste0(data_fd, "phenotypes/sex.tsv")
 
 # Output name of the R/qtl GT table without any filename extension
 myF2.gt <- "F2_geno"
@@ -134,6 +135,7 @@ na.string <- NA # Could be "./."
 # Allele code
 ## Be careful to the position of the parents in the vector mypX as the first allele will be given to the first parent. In other words, the first parent needs to correspond to the first allele of my.alleles vector.
 my.alleles <- c("L", "H")
+my.geno    <- c("LL", "HL", "HH")
 
 
 #--------------#
@@ -312,7 +314,7 @@ gt2rqtl(mydata$GT, parents.cln = myp, F1.cln = myF1, F2.cln = myF2, out.fmt = "c
 
 cat("\nLoading cross data with R/qtl...\n")
 
-mydata.qtl <- read.cross("csvs", ".", genfile = paste0(myF2.gt, ".csvs"), phefile = myF2.ptf, estimate.map = FALSE, genotypes = c("LL", "HL", "HH"), alleles = my.alleles)
+mydata.qtl <- read.cross("csvs", ".", genfile = paste0(myF2.gt, ".csvs"), phefile = myF2.ptf, estimate.map = FALSE, genotypes = my.geno, alleles = my.alleles)
 
 cross.cln <- grep("cross", colnames(mydata.qtl$pheno), ignore.case=TRUE, value=TRUE)
     

@@ -1,9 +1,9 @@
 #!/usr/bin/env Rscript
 # Title: Supp_Fig3_correlation_PO_Hb_shedding.R
-# Version: 0.2
+# Version: 0.3
 # Author: Winka LE CLEC'H <winkal@txbiomed.org>
 # Created in: 2020-03
-# Modified in: 2021-05-05
+# Modified in: 2021-05-06
 
 
 
@@ -30,8 +30,8 @@ source("functions/line2user.R")
 data_fd   <- "../data/"
 graph_fd  <- "../graphs/"
 
-F1 <-read.table(paste0(data_fd, "phenotyping/F1.csv"), header = TRUE, sep = ",", dec = ".", na.strings = "NA")
-F2 <-read.table(paste0(data_fd, "phenotyping/F2.csv"), header = TRUE, sep = ",", dec = ".", na.strings = "NA")
+F1 <-read.table(paste0(data_fd, "phenotypes/F1.csv"), header = TRUE, sep = ",", dec = ".", na.strings = "NA")
+F2 <-read.table(paste0(data_fd, "phenotypes/F2.csv"), header = TRUE, sep = ",", dec = ".", na.strings = "NA")
 
 
 #---------

@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # Title: Fig3_qtl_plot.R
-# Version: 0.1
+# Version: 0.2
 # Author: Frédéric CHEVALIER <fcheval@txbiomed.org>
 # Created in: 2020-12-22
 # Modified in: 2021-05-06
@@ -19,6 +19,7 @@
 # Versions #
 #==========#
 
+# v0.2 - 2021-05-06: update path to phenotype files
 # v0.1 - 2021-05-06: reshape code
 # v0.0 - 2020-12-22: creation
 
@@ -135,7 +136,7 @@ if (! file.exists(paste0(result_fd, "mypheno.qtl.ls.ac.RData"))) { stop(paste0(r
 cat("Loading data...\n")
 
 # Recreate R/qtl object
-mydata.qtl <- read.cross("csvs", ".", genfile = paste0(result_fd, "F2_geno.flt-gt30-dp10.csvs"), phefile = paste0(data_fd, "phenotyping/F2.csv"), estimate.map = FALSE, genotypes = my.geno, alleles = my.alleles)
+mydata.qtl <- read.cross("csvs", ".", genfile = paste0(result_fd, "F2_geno.flt-gt30-dp10.csvs"), phefile = paste0(data_fd, "phenotypes/F2.csv"), estimate.map = FALSE, genotypes = my.geno, alleles = my.alleles)
 
 # Load QTL analysis from singe QTL analysis
 load(paste0(result_fd, "mypheno.qtl.ls.RData"))

@@ -1,9 +1,9 @@
 #!/usr/bin/env Rscript
 # Title: Castle_Wright_estimator_script.R
-# Version: 0.1
+# Version: 0.2
 # Author: Winka LE CLEC'H <winkal@txbiomed.org>
 # Created in: 2020-10-30
-# Modified in: 2021-01-12
+# Modified in: 2021-05-06
 
 
 
@@ -18,6 +18,7 @@
 # Versions
 #-------------------
 
+# v0.2 - 2021-05-06: update path to phenotype files
 # v0.1 - 2021-01-12: clean code / integrate within local environment
 # v0.0 - 2020-10-30: creation
 
@@ -38,9 +39,9 @@ suppressMessages({
 # Working directory
 setwd(file.path(getwd(), "scripts"))
 
-mydataF0 <- read.csv("../data/phenotyping/F0_parental_populations.csv", header = TRUE, sep = ",", dec = ".", na.strings = "NA")
-mydataF1 <- read.csv("../data/phenotyping/F1.csv", header = TRUE, sep = ",", dec = ".", na.strings = "NA")
-mydataF2 <- read.csv("../data/phenotyping/F2.csv", header = TRUE, sep = ",", dec = ".", na.strings = "NA")
+mydataF0 <- read.csv("../data/phenotypes/F0_parental_populations.csv", header = TRUE, sep = ",", dec = ".", na.strings = "NA")
+mydataF1 <- read.csv("../data/phenotypes/F1.csv", header = TRUE, sep = ",", dec = ".", na.strings = "NA")
+mydataF2 <- read.csv("../data/phenotypes/F2.csv", header = TRUE, sep = ",", dec = ".", na.strings = "NA")
 
 
 #-----------------------------

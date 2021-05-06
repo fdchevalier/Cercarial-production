@@ -1,9 +1,9 @@
 #!/usr/bin/env Rscript
 # Title: Fig2_cercarial_shedding_pheno.R
-# Version: 0.2
+# Version: 0.3
 # Author: Winka LE CLEC'H <winkal@txbiomed.org>
 # Created in: 2020-03
-# Modified in: 2021-05-05
+# Modified in: 2021-05-06
 
 
 #-------------------
@@ -34,9 +34,9 @@ source("functions/line2user.R")
 data_fd   <- "../data/"
 graph_fd  <- "../graphs/"
 
-mydataF0 <-read.csv(paste0(data_fd, "phenotyping/F0_parental_populations.csv"), header = TRUE, sep = ",", dec = ".", na.strings = "NA")
-mydataF1 <-read.csv(paste0(data_fd, "phenotyping/F1.csv"), header = TRUE, sep = ",", dec = ".", na.strings = "NA")
-mydataF2 <-read.csv(paste0(data_fd, "phenotyping/F2.csv"), header = TRUE, sep = ",", dec = ".", na.strings = "NA")
+mydataF0 <-read.csv(paste0(data_fd, "phenotypes/F0_parental_populations.csv"), header = TRUE, sep = ",", dec = ".", na.strings = "NA")
+mydataF1 <-read.csv(paste0(data_fd, "phenotypes/F1.csv"), header = TRUE, sep = ",", dec = ".", na.strings = "NA")
+mydataF2 <-read.csv(paste0(data_fd, "phenotypes/F2.csv"), header = TRUE, sep = ",", dec = ".", na.strings = "NA")
 
 
 #------------
