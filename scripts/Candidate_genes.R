@@ -1,9 +1,9 @@
 #!/usr/bin/env Rscript
-# Title: 
-# Version: 
+# Title: Candidate_genes.R
+# Version: 0.1
 # Author: Frédéric CHEVALIER <fcheval@txbiomed.org>
-# Created in: 
-# Modified in: 
+# Created in: 2021-01-12
+# Modified in: 2021-05-06
 
 
 
@@ -11,7 +11,7 @@
 # Comments #
 #==========#
 
-# Getting the 1.8 LOD coordinates of the chromosomes around each QTL peak
+# Generate list of candidate gene under the 1.8 LOD confidence interval of each QTL peak.
 
 
 
@@ -19,7 +19,8 @@
 # Versions #
 #==========#
 
-# v0.0 - 2016-02-18: creation
+# v0.1 - 2021-05-06: reshape code / improve chromosome selection
+# v0.0 - 2021-01-12: creation
 
 
 
@@ -27,23 +28,27 @@
 # Packages required #
 #===================#
 
-library("qtl")      # For R/qtl commands
-library("vcfR")
-library("magrittr")
+cat("Loading packages...\n")
 
-library("parallel")
-library("doParallel")
+suppressMessages({
+    library("qtl")          # For R/qtl commands
+    library("vcfR")
+    library("magrittr")
 
-library("rtracklayer")
+    library("parallel")
+    library("doParallel")
 
-#library(latticeExtra)
+    library("rtracklayer")
+})
+
+
 
 #===========#
 # Functions #
 #===========#
 
 # Working directory
-#setwd(file.path(getwd(), "scripts"))
+setwd(file.path(getwd(), "scripts"))
 
 source("functions/Candidate_genes_func.R")
 
@@ -52,11 +57,13 @@ source("functions/Candidate_genes_func.R")
 # Variables #
 #===========#
 
+cat("Setting variables...\n")
+
 # Folders
 data_fd    <- "../data/"
 graph_fd   <- "../graphs/"
-result_fd1 <- "../results/1-QTL/"
-result_fd2 <- "../results/2-Candidate genes/"
+result_fd1 <- "../results/2-QTL/"
+result_fd2 <- "../results/3-Candidate genes/"
 
 myvcf_f  <- paste0(data_fd, "calling/cerc_prod_snpEff_1-2-3-4-5.vcf.gz")
 mygff_f  <- paste0(data_fd, "genome/schistosoma_mansoni.PRJEA36577.WBPS14.annotations.gff3")
@@ -64,11 +71,8 @@ myann_f  <- paste0(data_fd, "genome/Sm_transcript_table_gff-hhpred_2020-09-21.ts
 
 # Expression data
 myexpr_f <- paste0(data_fd, "genome/TPM_isoforms_Sm_2020-08-07.tsv")
-# myexpr.cln <- 4:7    
-# myexpr.nm  <- paste0("TPM ", c("sp 1d", "sp 3d", "sp shedder", "cercariae"))
 myexpr.cln <- 6:7    
 myexpr.nm  <- paste0("TPM ", c("sp shedder", "cercariae"))
-
 
 mypheno.qtl.ls <- paste0(result_fd1, "mypheno.qtl.ls.RData")
 myqtl.i <- paste0(result_fd1, "scantwo_qtl.i.RData")
@@ -81,41 +85,18 @@ myfmt <- matrix(c(
             ncol=2, byrow=TRUE)
 
 
-# # Object contaning the input file name
-# filename <- basename(myvcf_f) %>% strsplit(., ".vcf.gz")
-
-# # PT data file
-# myF2.ptf <- paste0(data_fd, "phenotyping/F2.csv")
-
-# # Output name of the R/qtl GT table without any filename extension
-# myF2.gt <- "F2_geno"
-
-#-----------------#
-# Cross variables #
-#-----------------#
+##-----------------#
+## Cross variables #
+##-----------------#
 
 # F2A variables
 mypA <- c("SmBRE4_m", "SmLE19_f")   # Be careful at the order of the parents (cf. Allele code below)
-myF1A <- c("F1A")
-myF2A <- c("F2A")
-
-#mypB <- c("SmLE15_m", "SmBRE2_f")
 mypB <- c("SmBRE2_f", "SmLE15_m")   # Be careful at the order of the parents (cf. Allele code below)
-myF1B <- c("F1B")
-myF2B <- c("F2B")
 
-myF2.list <- c("F2A", "F2B")
-
-# GQ and read depth (rd) and missing data thresholds
+# GQ and read depth (dp) thresholds
 ## Assign NULL to skip to the variable to skip the corresponding filtering step
 gq.trsh <- 30
 dp.trsh <- 6
-
-na.string <- NA # Could be "./."
-
-# Allele code
-## Be careful to the position of the parents in the vector mypX as the first allele will be given to the first parent. In other words, the first parent needs to correspond to the first allele of my.alleles vector.
-my.alleles <- c("L", "H")
 
 
 #--------------#
@@ -140,9 +121,12 @@ mydrop <- 1.8
 
 if (! dir.exists(result_fd2)) { dir.create(result_fd2, recursive = TRUE) }
 
+
 #--------------#
-# Data Loading #
+# Data loading #
 #--------------#
+
+cat("Loading data...\n")
 
 mygff <- readGFF(mygff_f)
 myann <- read.csv(myann_f, header=TRUE, sep="\t", stringsAsFactors = FALSE)
@@ -154,15 +138,17 @@ myexpr <- read.csv(myexpr_f, header=TRUE, sep="\t", stringsAsFactors = FALSE)
 load(mypheno.qtl.ls)
 myqtl.ls <- mypheno.qtl.ls[["average"]]
 
-mylod     <- myqtl.ls[["combination"]][["em"]]$lod
-# myperm    <- myqtl.ls[["combination"]][["em"]]$perm
-
-# mypeaks   <- summary(mylod, perm=myperm, alpha=mylod.trsh)
-
-# myqtl.chr <- mypeaks[rownames(mypeaks[grep("_[0-9ZW]$", mypeaks[,1], perl=TRUE), ]), 1]
+mylod    <- myqtl.ls[["combination"]][["em"]]$lod
 
 load(myqtl.i)
 load(st.perm)
+
+
+#---------------#
+# LOD intervals #
+#---------------#
+
+cat("Loading data...\n")
 
 # Get the thresholds as a vector
 thres <- summary(st.perm) %>% as.data.frame()
@@ -170,18 +156,23 @@ colnames(thres) <- (summary(st.perm) %>% attributes())$"names"
 thres_vec <- thres[1,]
 
 # Chromosomes of interest
-myqtl.chr <- summary(myqtl.i, thresholds = as.numeric(thres_vec[1:5])) %>% as.data.frame() %>% .[,1:2] %>% unlist() %>% unique() %>% as.vector() %>% sort()
+myqtl.chr <- summary(myqtl.i, thresholds = as.numeric(thres_vec[1:5])) %>% as.data.frame() %>% .[,1:2] %>% unlist() %>% unique() %>% grep("_[1-7]$|_ZW$", ., value=TRUE) %>% sort()
 
+# LOD intervals
 lodint.ls <- lapply(myqtl.chr, function(x) lodint(myqtl.ls[[3]][[2]]$lod, chr = x, drop = mydrop))
 
 
+#----------------#
+# VCF processing #
+#----------------#
+
+cat("Processing VCF file...\n")
+
 # Load VCF data
 myvcf <- read.vcfR(myvcf_f)
-myvcf.bk <- myvcf
 
-# Retains only the cross parents
+# Retain only the cross parents
 myvcf@gt <- myvcf@gt[, colnames(myvcf@gt) %in% c("FORMAT", mypA, mypB)]
-
 
 # GT, GQ and DP data file
 mydata <- vector("list", length(myfmt[,1])+1)
@@ -194,10 +185,10 @@ for (i in myfmt[,1]) {
     mydata[[i]] <- extract.gt(myvcf, i, as.numeric = mynum)
 }
 
-# GQ
+# Filtering on GQ
 mat.gq <- mydata$GQ < gq.trsh
 
-# DP
+# Filtering on DP
 mat.dp <- mydata$DP < dp.trsh
 
 mat.sel <- apply(mat.gq * mat.dp, 2, as.logical)
@@ -207,14 +198,19 @@ mydata$GT[mat.sel] <- NA
 mydata$DP[mat.sel] <- NA
 
 
+#------------------#
+# Preparing tables #
+#------------------#
+
+cat("\nPreparing input tables...\n")
+
 # Select markers within QTLs
 myvec.mrkr <- sapply(lodint.ls, function(x) getFIX(myvcf)[, 1] == x[1,1] & as.numeric(getFIX(myvcf)[,2]) >= as.numeric(x[1,2]) & as.numeric(getFIX(myvcf)[,2]) <= as.numeric(x[3,2])) %>% rowSums(.) > 0
 
-# Select site that are all NAs
+# Select sites that are all NAs
 myvec.na <- mydata$GT %>% apply(., 1, function(x) all(is.na(x)))
 
 # Remove sites that are below thresholds
-# myvec <- rowSums(cbind(! myvec.mrkr, myvec.na, myvec.dp, myvec.gq, myvec.uninfo)) > 0
 myvec <- rowSums(cbind(! myvec.mrkr, myvec.na)) > 0
 
 # Clean the lists
@@ -224,7 +220,6 @@ mydata <- lapply(mydata, function(x) x[! myvec,])
 myvec.uninfo <- mydata$GT %>% gsub("|", "/", ., fixed = TRUE) %>% apply(., 1, function(x) strsplit(x, "[/]") %>% unlist) %>% lapply(., function(x) unique(x) %>% length(.) == 1) %>% unlist()
 
 # Remove sites that are below thresholds
-# myvcf <- myvcf[! myvec.uninfo, ]
 mydata <- lapply(mydata, function(x) x[! myvec.uninfo,])
 
 # Find LOD score when available
@@ -276,10 +271,14 @@ for(i in 1:length(myp)) {
 
 }
 
-
-
-# Build table
 mydata.tb <- data.frame(mydata$FIX, mydata$GT[, c(mypA, mypB)], mysc.cln, lod=mylod.cln)
+
+
+#-----------------------#
+# Candidate gene tables #
+#-----------------------#
+
+cat("Generating candidate gene tables...\n")
 
 tb.ls <- vector("list", length(myqtl.chr))
 names(tb.ls) <- myqtl.chr
