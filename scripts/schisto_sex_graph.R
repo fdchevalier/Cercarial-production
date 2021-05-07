@@ -1,9 +1,9 @@
 #!/usr/bin/env Rscript
 # Title: schisto_sex_graph.R
-# Version: 0.0
+# Version: 0.1
 # Author: Frédéric CHEVALIER <fcheval@txbiomed.org>
 # Created in: 2020-12-01
-# Modified in: 
+# Modified in: 2021-05-07
 
 
 
@@ -19,6 +19,7 @@
 # Versions #
 #==========#
 
+# v0.1 - 2021-05-07: remove unnecessary path / update fig number
 # v0.0 - 2020-12-01: creation
 
 
@@ -30,7 +31,6 @@
 # Folders
 data_fd   <- "../data/libraries/"
 graph_fd  <- "../graphs/"
-result_fd <- "../results/1-QTL/"
 
 # Samples to plot
 myspl <- c("SmBRE4_m", "SmLE19_f", "F2A_117", "F2A_173", "F2B_326", "F2B_344")
@@ -77,7 +77,7 @@ x_max <- max(unlist(lapply(mydata, function(x) max(x[,2]))))
 
 cat("\nDrawing graphs. This may take a while...\n")
 
-png(paste0(graph_fd, "Supp. Fig. 4.png"), width = 5 * 2, height = 3 * length(myspl) / 2, unit = "in", res = 300)
+png(paste0(graph_fd, "Supp. Fig. 1.png"), width = 5 * 2, height = 3 * length(myspl) / 2, unit = "in", res = 300)
 layout(matrix(1:length(myspl), ncol = 2, byrow = TRUE))
 for (i in myspl) {
     # Point graph

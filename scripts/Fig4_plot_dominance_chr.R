@@ -1,9 +1,9 @@
 #!/usr/bin/env Rscript
 # Title: Fig4_plot_dominance_chr.R
-# Version: 0.1
+# Version: 0.2
 # Author: Winka LE CLEC'H <winkal@txbiomed.org>
 # Created in: 2020-03
-# Modified in: 2020-12-17
+# Modified in: 2021-05-07
 
 
 
@@ -27,7 +27,7 @@ setwd(file.path(getwd(), "scripts"))
 
 # Folders
 graph_fd  <- "../graphs/"
-result_fd <- "../results/1-QTL/"
+result_fd <- "../results/2-QTL/"
 
 load(paste0(result_fd, "mygeno.pheno.RData"))
 
